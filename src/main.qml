@@ -26,7 +26,7 @@ Window {
     // Панель инструментов
     Rectangle {
         id: controlPanel
-        width: 250
+        width: 280
         height: parent.height
         color: "#2c3e50"
 
@@ -171,14 +171,6 @@ Window {
                 text: "Sweep Line: " + angleSlider.value.toFixed(1) + "°"
                 color: "white"
                 font.pixelSize: 12
-            }
-
-            // Кнопка обновления
-            Button {
-                text: "Update Decomposition"
-                width: parent.width
-                highlighted: true
-                onClicked: decomposer.updateDecomposition()
             }
 
             // Разделитель
@@ -455,17 +447,6 @@ Window {
                     centerX + Math.cos(angle * Math.PI / 180) * 70,
                     centerY - Math.sin(angle * Math.PI / 180) * 70)
             }
-        }
-
-        // Кнопка перерисовки
-        Button {
-            anchors {
-                top: parent.top
-                right: parent.right
-                margins: 10
-            }
-            text: "Refresh"
-            onClicked: canvas.requestPaint()
         }
 
         // Информационная панель
