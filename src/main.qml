@@ -12,6 +12,10 @@ Window {
     title: "Polygon Decomposition Visualizer"
     color: "#f5f5f5"
 
+    function getRandom(previousValue) {
+        return Math.floor(previousValue + Math.random() * 90) % 360;
+    }
+
     Decomposer {
         id: decomposer
         sweepAngle: angleSlider.value
@@ -136,14 +140,14 @@ Window {
                     text: "Complex Shape"
                     width: parent.width
                     onClicked: {
-                        var complexPoints = [
-                            {"x": 100, "y": 100},
-                            {"x": 400, "y": 100},
-                            {"x": 400, "y": 300},
-                            {"x": 300, "y": 200},
-                            {"x": 200, "y": 300},
-                            {"x": 100, "y": 200}
-                        ]
+                        var x = getRandom(100);
+                        var y = getRandom(x);
+                        var complexPoints = []
+                        for (var i = 0; i < 5; i++) {
+                            complexPoints.push({"x": x, "y": y});
+                            x = getRandom(y);
+                            y = getRandom(x);
+                        }
                         decomposer.setOriginalPolygon(complexPoints)
                     }
                 }
