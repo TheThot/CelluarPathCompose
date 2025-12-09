@@ -1,7 +1,6 @@
 
 add_library(src
         decomposer.cpp
-        decomposer.h
 )
 
 target_link_libraries(src

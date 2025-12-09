@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.5)
 project(TryCelluarPathCompose)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -7,8 +7,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-set(PROG_INCLUDE    ${CMAKE_CURRENT_SOURCE_DIR}
-                    ${CMAKE_CURRENT_SOURCE_DIR}/src
+set(PROG_INCLUDE    ${CMAKE_CURRENT_SOURCE_DIR}/src
                     ${Qt5Widgets_INCLUDE_DIRS}
                     ${QtQml_INCLUDE_DIRS})
 
