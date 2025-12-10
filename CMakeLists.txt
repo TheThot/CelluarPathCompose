@@ -20,6 +20,11 @@ add_subdirectory(src)
 add_executable(TryCelluarPathCompose main.cpp
         ${Qt_RESOURCES})
 
+foreach (name ${Qt_RESOURCES})
+    message(STATUS "${name}")
+endforeach ()
+
+
 target_link_libraries(TryCelluarPathCompose
         PUBLIC
         Qt5::Core

@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/qml">
         <file alias="main.qml">src/main.qml</file>
+        <file alias="Toolbar.qml">src/Toolbar.qml</file>
     </qresource>
 </RCC>
