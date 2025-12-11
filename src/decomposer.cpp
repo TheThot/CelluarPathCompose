@@ -274,12 +274,13 @@ QPolygonF Decomposer::getOrientedBoundingRect(const QPolygonF& polygon, double a
 
     // Поворачиваем углы обратно на angle
     QPolygonF orientedRect;
-    for (int i = 0; i < 4; ++i) {
-        double dx = corners[i].x() - centroid.x();
-        double dy = corners[i].y() - centroid.y();
+    for (auto currCorn : corners)
+    {
+        double dx = currCorn.x() - centroid.x();
+        double dy = currCorn.y() - centroid.y();
 
-        double xRotated = centroid.x() + dx * cosA - dy * sinA;
-        double yRotated = centroid.y() + dx * sinA + dy * cosA;
+        double xRotated = centroid.x() + dx * cosA + dy * sinA;
+        double yRotated = centroid.y() - dx * sinA + dy * cosA;
 
         orientedRect << QPointF(xRotated, yRotated);
     }
