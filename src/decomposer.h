@@ -10,6 +10,7 @@
 #include <QVariantList>
 #include <QVector>
 #include <QPointF>
+#include <QLineF>
 
 class Decomposer : public QObject
 {

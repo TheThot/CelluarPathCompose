@@ -5,6 +5,8 @@
 #include "decomposer.h"
 #include <cmath>
 #include <algorithm>
+#include <iostream>
+#include <ostream>
 #include <vector>
 
 
@@ -144,41 +146,49 @@ std::vector<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& pol
         return cells;
     }
 
-    // 1. Поворачиваем полигон
+    // поворачиваем полигон
     QPolygonF rotatedPolygon;
     for (const QPointF& point : polygon) {
-        rotatedPolygon.append(rotatePoint(point, -sweepAngle));
+        rotatedPolygon.append(rotatePoint(point, sweepAngle));
     }
 
-    // 2. Находим все уникальные Y-координаты вершин
-    QList<qreal> yLevels;
+    // упорядовачиваем X-координаты вершин, уникальные
+    QList<qreal> xLevels;
     for (const QPointF& point : rotatedPolygon) {
-        if (!yLevels.contains(point.y())) {
-            yLevels.append(point.y());
+        if (!xLevels.contains(point.x())) {
+            xLevels.append(point.x());
         }
     }
-    std::sort(yLevels.begin(), yLevels.end());
+    std::sort(xLevels.begin(), xLevels.end());
 
-    // 3. Для каждого уровня Y находим пересечения с ребрами
-    for (int i = 0; i < yLevels.size() - 1; ++i) {
-        double y1 = yLevels[i];
-        double y2 = yLevels[i + 1];
-
-        if (std::abs(y2 - y1) < 1e-9) {
+    // для каждого уровня X находим пересечения с ребрами
+    QLineF level, edge;
+    QPointF resIntersection;
+    for (int i = 0; i < xLevels.size() - 1; ++i) {
+        double x1 = xLevels[i];
+        double x2 = xLevels[i + 1];
+        // пропуск случая малого уровня
+        if (std::abs(x2 - x1) < 1e-9) {
             continue;
         }
 
-        // Находим все пересечения с горизонтальной линией на середине уровня
-        double yMid = (y1 + y2) / 2;
+        // находим центр уровня и все пересечения
+        double xMid = (x1 + x2) / 2;
+        level = QLineF(QPointF(xMid, -std::numeric_limits<qreal>::max()),
+                        QPointF(xMid, std::numeric_limits<qreal>::max()));
         QList<qreal> intersections;
 
         for (int j = 0; j < rotatedPolygon.size(); ++j) {
-            int k = (j + 1) % rotatedPolygon.size();
-            QPointF p1 = rotatedPolygon[j];
-            QPointF p2 = rotatedPolygon[k];
+            int k = (j + 1) % rotatedPolygon.size(); // следующий и замыкание
+            /*QPointF p1 = rotatedPolygon[j];
+            QPointF p2 = rotatedPolygon[k];*/
+            edge = QLineF(rotatedPolygon[j], rotatedPolygon[k]);
 
             // Проверяем пересечение
-            if ((p1.y() <= yMid && p2.y() >= yMid) ||
+            if (level.intersects(edge, &resIntersection) ==
+                    QLineF::BoundedIntersection)
+                intersections.append(resIntersection.y());
+            /*if ((p1.y() <= yMid && p2.y() >= yMid) ||
                 (p1.y() >= yMid && p2.y() <= yMid)) {
 
                 if (std::abs(p2.y() - p1.y()) < 1e-9) {
@@ -189,7 +199,11 @@ std::vector<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& pol
                     double x = p1.x() + t * (p2.x() - p1.x());
                     intersections.append(x);
                 }
-            }
+            }*/
+        }
+        for (auto a : intersections)
+        {
+            std::cout << "Intersection is " << a << std::endl;
         }
 
         // Сортируем пересечения
@@ -197,10 +211,10 @@ std::vector<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& pol
 
         // Создаем трапеции между пересечениями
         for (int j = 0; j < intersections.size() - 1; j += 2) {
-            double x1 = intersections[j];
-            double x2 = intersections[j + 1];
+            double y1 = intersections[j];
+            double y2 = intersections[j + 1];
 
-            if (x2 - x1 < 1e-9) {
+            if (y2 - y1 < 1e-9) {
                 continue;
             }
 
@@ -217,7 +231,7 @@ std::vector<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& pol
             // Поворачиваем обратно
             QPolygonF rotatedTrapezoid;
             for (const QPointF& point : trapezoid) {
-                rotatedTrapezoid.append(inverseRotatePoint(point, -sweepAngle));
+                rotatedTrapezoid.append(inverseRotatePoint(point, sweepAngle));
             }
 
             cells.push_back(rotatedTrapezoid);
@@ -311,6 +325,7 @@ double Decomposer::computePolygonArea(const QPolygonF& polygon) const{
     return std::abs(area) / 2.0;
 }
 
+//TODO определить порядок задания данных что первичнее qml или ++ ?
 // Предопределенные полигоны
 void Decomposer::createDefaultPolygon() {
     m_originalPolygon.clear();
