@@ -240,28 +240,25 @@ QPolygonF Decomposer::getOrientedBoundingRect(const QPolygonF& polygon, double a
     }
     centroid /= polygon.size();
 
-    double angleRad = angleDegrees * M_PI / 180.0;
-    double cosA = std::cos(angleRad);
-    double sinA = std::sin(angleRad);
-
     // Поворачиваем полигон на -angle (выравниваем)
     qreal minX = std::numeric_limits<qreal>::max();
     qreal maxX = -std::numeric_limits<qreal>::max();
     qreal minY = std::numeric_limits<qreal>::max();
     qreal maxY = -std::numeric_limits<qreal>::max();
 
+    QPolygonF polygonR;
+    double xAligned, yAligned;
     for (const QPointF& p : polygon) {
-        double dx = p.x() - centroid.x();
-        double dy = p.y() - centroid.y();
+        auto pR = rotatePoint(QPointF(p.x() - centroid.x(),p.y() - centroid.y()),
+                              angleDegrees);
+        polygonR << pR;
+        xAligned = pR.x() + centroid.x();
+        yAligned = pR.y() + centroid.y();
 
-        // Поворот на -angle (выравнивание)
-        double xAligned = centroid.x() + dx * cosA + dy * sinA;
-        double yAligned = centroid.y() - dx * sinA + dy * cosA;
-
-        if (xAligned < minX) minX = xAligned;
-        if (xAligned > maxX) maxX = xAligned;
-        if (yAligned < minY) minY = yAligned;
-        if (yAligned > maxY) maxY = yAligned;
+        minX = xAligned < minX ? xAligned : minX;
+        maxX = xAligned > maxX ? xAligned : maxX;
+        minY = yAligned < minY ? yAligned : minY;
+        maxY = yAligned > maxY ? yAligned : maxY;
     }
 
     // Углы выровненного прямоугольника
@@ -276,13 +273,10 @@ QPolygonF Decomposer::getOrientedBoundingRect(const QPolygonF& polygon, double a
     QPolygonF orientedRect;
     for (auto currCorn : corners)
     {
-        double dx = currCorn.x() - centroid.x();
-        double dy = currCorn.y() - centroid.y();
+        auto pR = inverseRotatePoint(QPointF(currCorn.x() - centroid.x(), currCorn.y() - centroid.y()),
+                                        angleDegrees);
 
-        double xRotated = centroid.x() + dx * cosA + dy * sinA;
-        double yRotated = centroid.y() - dx * sinA + dy * cosA;
-
-        orientedRect << QPointF(xRotated, yRotated);
+        orientedRect << QPointF(pR.x() + centroid.x(), pR.y() + centroid.y());
     }
 
     return orientedRect;
@@ -294,10 +288,8 @@ QPointF Decomposer::rotatePoint(const QPointF& point, double angle) {
     double cosA = std::cos(rad);
     double sinA = std::sin(rad);
 
-    return QPointF(
-        point.x() * cosA - point.y() * sinA,
-        point.x() * sinA + point.y() * cosA
-    );
+    return QPointF{point.x() * cosA - point.y() * sinA,
+        point.x() * sinA + point.y() * cosA};
 }
 
 QPointF Decomposer::inverseRotatePoint(const QPointF& point, double angle) {
@@ -319,35 +311,6 @@ double Decomposer::computePolygonArea(const QPolygonF& polygon) const{
     return std::abs(area) / 2.0;
 }
 
-bool Decomposer::isPointInPolygon(const QPointF& point, const QPolygonF& polygon) {
-    int wn = 0;
-    int n = polygon.size();
-
-    for (int i = 0; i < n; ++i) {
-        int j = (i + 1) % n;
-        const QPointF& p1 = polygon[i];
-        const QPointF& p2 = polygon[j];
-
-        if (p1.y() <= point.y()) {
-            if (p2.y() > point.y()) {
-                if ((p2.x() - p1.x()) * (point.y() - p1.y()) -
-                    (point.x() - p1.x()) * (p2.y() - p1.y()) > 0) {
-                    ++wn;
-                }
-            }
-        } else {
-            if (p2.y() <= point.y()) {
-                if ((p2.x() - p1.x()) * (point.y() - p1.y()) -
-                    (point.x() - p1.x()) * (p2.y() - p1.y()) < 0) {
-                    --wn;
-                }
-            }
-        }
-    }
-
-    return wn != 0;
-}
-
 // Предопределенные полигоны
 void Decomposer::createDefaultPolygon() {
     m_originalPolygon.clear();
@@ -358,30 +321,4 @@ void Decomposer::createDefaultPolygon() {
                       << QPointF(400, 400)
                       << QPointF(200, 400)
                       << QPointF(100, 250);
-}
-
-void Decomposer::createStarPolygon() {
-    m_originalPolygon.clear();
-    // Звезда
-    int points = 5;
-    double outerRadius = 150;
-    double innerRadius = 70;
-
-    for (int i = 0; i < points * 2; ++i) {
-        double radius = (i % 2 == 0) ? outerRadius : innerRadius;
-        double angle = M_PI * i / points;
-        m_originalPolygon << QPointF(300 + radius * cos(angle),
-                                     250 + radius * sin(angle));
-    }
-}
-
-void Decomposer::createComplexPolygon() {
-    m_originalPolygon.clear();
-    // Сложный полигон с вогнутостью
-    m_originalPolygon << QPointF(100, 100)
-                      << QPointF(400, 100)
-                      << QPointF(400, 300)
-                      << QPointF(300, 200)
-                      << QPointF(200, 300)
-                      << QPointF(100, 200);
 }

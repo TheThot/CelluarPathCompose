@@ -57,7 +57,6 @@ private:
     QPointF rotatePoint(const QPointF& point, double angle);
     QPointF inverseRotatePoint(const QPointF& point, double angle);
     double computePolygonArea(const QPolygonF& polygon) const;
-    bool isPointInPolygon(const QPointF& point, const QPolygonF& polygon);
 
     // Данные
     QPolygonF m_originalPolygon;
@@ -69,8 +68,6 @@ private:
 
     // Предопределенные полигоны
     void createDefaultPolygon();
-    void createStarPolygon();
-    void createComplexPolygon();
 };
 
 #endif
