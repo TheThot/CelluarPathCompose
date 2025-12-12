@@ -16,7 +16,8 @@ Decomposer::Decomposer(QObject *parent)
     , m_showDecomposition(true)
     , m_showOrientedRect(true)
 {
-    createDefaultPolygon();
+//    createDefaultPolygon();
+    createPolygonWithHoles();
     updateDecomposition();
 }
 
@@ -29,6 +30,25 @@ QVariantList Decomposer::originalPolygon() const {
         list.append(pointMap);
     }
     return list;
+}
+
+QVariantList Decomposer::holes_2Darray() const{
+    QVariantList result;
+    QVariantList row;
+
+    // комбинируем в одном QVariantList все остальные QVariantList'ы
+    for (const auto &hole : m_holes) {
+        for(const auto &p : hole) {
+            QVariantMap pointMap;
+            pointMap["x"] = p.x();
+            pointMap["y"] = p.y();
+            row.append(pointMap);
+        }
+        result.append(QVariant::fromValue(row));
+        row.clear();
+    }
+
+    return result;
 }
 
 QVariantList Decomposer::decompositionCells() const {
@@ -347,10 +367,10 @@ void Decomposer::createPolygonWithHoles() {
             << QPointF(200, 200)
             << QPointF(200, 250);
     m_holes.append(oneHole);
-    oneHole.clear();
-    oneHole << QPointF(300, 350)
+    QPolygonF secHole;
+    secHole << QPointF(300, 350)
             << QPointF(350, 350)
             << QPointF(350, 300)
             << QPointF(300, 300);
-    m_holes.append(oneHole);
+    m_holes.append(secHole);
 }

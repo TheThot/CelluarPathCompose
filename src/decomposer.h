@@ -21,17 +21,37 @@ class Decomposer : public QObject
     Q_PROPERTY(double sweepAngle READ sweepAngle WRITE setSweepAngle NOTIFY sweepAngleChanged)
     Q_PROPERTY(bool showDecomposition READ showDecomposition WRITE setShowDecomposition NOTIFY showDecompositionChanged)
     Q_PROPERTY(bool showOrientedRect READ showOrientedRect WRITE setShowOrientedRect NOTIFY showOrientedRectChanged)
+    Q_PROPERTY(QVariantList test_2Darray READ test_2Darray WRITE setTest_2Darray)
+    Q_PROPERTY(QVariantList holes_2Darray READ holes_2Darray NOTIFY holesPolygonsChanged)
 
 public:
     explicit Decomposer(QObject *parent = nullptr);
 
     // Основные свойства
+    QVariantList holes_2Darray() const;
     QVariantList originalPolygon() const;
     QVariantList decompositionCells() const;
     QVariantList orientedRect() const;
     double sweepAngle() const;
     bool showDecomposition() const;
     bool showOrientedRect() const;
+    QVariantList test_2Darray() const {
+        QVariantList result;
+
+        // Создаем QList<QVariantList>
+        QList<QVariantList> data = {
+            {1, 2, 3},
+            {5, 6, 7, 8},
+            {9, 10}
+        };
+
+        // комбинируем в одном QVariantList все остальные QVariantList'ы
+        for (const QVariantList &row : data) {
+            result.append(QVariant::fromValue(row));
+        }
+
+        return result;
+    }
 
     // Методы для вызова из QML
     Q_INVOKABLE void setOriginalPolygon(const QVariantList &polygon);
@@ -41,6 +61,17 @@ public:
     Q_INVOKABLE void updateDecomposition();
     Q_INVOKABLE void resetPolygon();
     Q_INVOKABLE void resetToPolygonWithHoleState();
+    Q_INVOKABLE void setTest_2Darray(const QVariantList &polygon)
+    {
+        for (const QVariant &pointVar : polygon) {
+            auto curr = pointVar.toList();
+            QPolygonF poly;
+            for (const QVariant &currVar : curr)
+            {
+                poly << currVar.toPointF();
+            }
+        }
+    }
 
 signals:
     void originalPolygonChanged();
@@ -49,6 +80,7 @@ signals:
     void sweepAngleChanged();
     void showDecompositionChanged();
     void showOrientedRectChanged();
+    void holesPolygonsChanged();
 
 private:
     // Алгоритмы декомпозиции

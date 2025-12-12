@@ -20,6 +20,19 @@ Rectangle {
         return Math.floor(previousValue + Math.random() * 90) % 360;
     }
 
+    function testArrayOut(){
+        var test = decomposer.test_2Darray;
+        console.log("Test size is ", test.length);
+        console.log("Iterate throught holes");
+        for (var onePoly of test) {
+            console.log("Curr poly size is ", onePoly.length);
+            console.log("Show one poly path");
+            for(var row of onePoly){
+                console.log("Poly coord is ", row);
+            }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
@@ -49,6 +62,7 @@ Rectangle {
                 onClicked: {
                     decomposer.resetToPolygonWithHoleState();
                     buttonsVisibleProp = rdbtn1.checked;
+                    // testArrayOut();
                 }   // обработка выбора переключателя
             }
             RadioButton {
