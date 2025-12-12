@@ -10,6 +10,7 @@ Rectangle {
     color: "#2c3e50"
 
     property var _decomposer
+    property bool buttonsVisibleProp : true
 
     property alias sweepAngle: angleSlider.value
     property alias showDecomposition: showDecompositionCheck.checked
@@ -32,6 +33,80 @@ Rectangle {
             font.pixelSize: 16
             Layout.alignment: Qt.AlignHCenter
         }
+
+        // Разделитель
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: "#7f8c8d"
+        }
+
+        Column {
+            spacing: 0
+            padding: 0
+            ButtonGroup {
+                id: polySetup
+                onClicked: {
+                    decomposer.resetToPolygonWithHoleState();
+                    buttonsVisibleProp = rdbtn1.checked;
+                }   // обработка выбора переключателя
+            }
+            RadioButton {
+                id: rdbtn1
+                ButtonGroup.group: polySetup
+                width: 20
+                contentItem: Text {
+                    text: "Simpl poly"
+                    font.pixelSize: 14
+                    color: "white"
+                    horizontalAlignment: Text.AlignLeft
+                    verticalAlignment: Text.AlignVCenter
+                    leftPadding: 30
+                }
+            }
+            RadioButton {
+                id: rdbtn2
+                ButtonGroup.group: polySetup
+                width: 20
+                contentItem: Text {
+                    text: "Poly with holes"
+                    font.pixelSize: 14
+                    color: "white"
+                    horizontalAlignment: Text.AlignLeft
+                    verticalAlignment: Text.AlignVCenter
+                    leftPadding: 30
+                }
+            }
+            Component.onCompleted: {
+                rdbtn1.checked = true
+            }
+        }
+        /*RadioButton {
+            contentItem: Loader {
+                sourceComponent: control.checked ? checkedComponent : uncheckedComponent
+
+                Component {
+                    id: checkedComponent
+                    Row {
+                        spacing: 5
+                        Image { source: "checked.svg" }
+                        Text {
+                            text: control.text
+                            color: "green"
+                            font.bold: true
+                        }
+                    }
+                }
+
+                Component {
+                    id: uncheckedComponent
+                    Text {
+                        text: control.text
+                        color: "gray"
+                    }
+                }
+            }
+        }*/
 
         // Разделитель
         Rectangle {
@@ -102,19 +177,21 @@ Rectangle {
             Button {
                 text: "Hexagon"
                 width: parent.width
+                visible: buttonsVisibleProp
                 onClicked: decomposer.resetPolygon()
             }
 
             Button {
                 text: "Star"
                 width: parent.width
+                visible: buttonsVisibleProp
                 onClicked: {
                     var starPoints = []
                     var points = 5
                     var outerRadius = 150
                     var innerRadius = 70
                     for (var i = 0; i < points * 2; i++) {
-                        var radius = (i % 2 == 0) ? outerRadius : innerRadius
+                        var radius = (i % 2 === 0) ? outerRadius : innerRadius
                         var angle = Math.PI * i / points
                         starPoints.push({
                             "x": 300 + radius * Math.cos(angle),
@@ -128,6 +205,7 @@ Rectangle {
             Button {
                 text: "Complex Shape"
                 width: parent.width
+                visible: buttonsVisibleProp
                 onClicked: {
                     var x = getRandom(100);
                     var y = getRandom(x);

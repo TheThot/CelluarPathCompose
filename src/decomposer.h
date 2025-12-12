@@ -40,6 +40,7 @@ public:
     Q_INVOKABLE void setShowOrientedRect(bool show);
     Q_INVOKABLE void updateDecomposition();
     Q_INVOKABLE void resetPolygon();
+    Q_INVOKABLE void resetToPolygonWithHoleState();
 
 signals:
     void originalPolygonChanged();
@@ -66,9 +67,11 @@ private:
     double m_sweepAngle;
     bool m_showDecomposition;
     bool m_showOrientedRect;
+    QList<QPolygonF> m_holes;
 
     // Предопределенные полигоны
     void createDefaultPolygon();
+    void createPolygonWithHoles();
 };
 
 #endif

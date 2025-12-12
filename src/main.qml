@@ -47,6 +47,7 @@ Window {
             id: canvas
             anchors.fill: parent
             renderTarget: Canvas.FramebufferObject
+            visible: myToolbar.buttonsVisibleProp
             antialiasing: true
 
             property real scaleFactor: Math.min(width / 600, height / 500)

@@ -138,6 +138,12 @@ void Decomposer::resetPolygon() {
     updateDecomposition();
 }
 
+void Decomposer::resetToPolygonWithHoleState() {
+    createPolygonWithHoles();
+    emit originalPolygonChanged();
+    updateDecomposition();
+}
+
 // Алгоритм трапецоидальной декомпозиции
 std::vector<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& polygon, double sweepAngle) {
     std::vector<QPolygonF> cells;
@@ -324,4 +330,27 @@ void Decomposer::createDefaultPolygon() {
                       << QPointF(400, 400)
                       << QPointF(200, 400)
                       << QPointF(100, 250);
+}
+
+void Decomposer::createPolygonWithHoles() {
+    m_originalPolygon.clear();
+    // Шестиугольник
+    m_originalPolygon << QPointF(200, 100)
+                      << QPointF(400, 100)
+                      << QPointF(500, 250)
+                      << QPointF(400, 400)
+                      << QPointF(200, 400)
+                      << QPointF(100, 250);
+    QPolygonF oneHole;
+    oneHole << QPointF(250, 250)
+            << QPointF(250, 200)
+            << QPointF(200, 200)
+            << QPointF(200, 250);
+    m_holes.append(oneHole);
+    oneHole.clear();
+    oneHole << QPointF(300, 350)
+            << QPointF(350, 350)
+            << QPointF(350, 300)
+            << QPointF(300, 300);
+    m_holes.append(oneHole);
 }
