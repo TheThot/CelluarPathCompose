@@ -174,45 +174,33 @@ std::vector<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& pol
 
         // находим центр уровня и все пересечения
         double xMid = (x1 + x2) / 2;
-        level = QLineF(QPointF(xMid, -std::numeric_limits<qreal>::max()),
-                        QPointF(xMid, std::numeric_limits<qreal>::max()));
-        QList<qreal> intersections;
+        level = QLineF(QPointF(xMid, -10e5),
+                       QPointF(xMid, 10e5));
+        QList<QPointF> intersections;
 
         for (int j = 0; j < rotatedPolygon.size(); ++j) {
             int k = (j + 1) % rotatedPolygon.size(); // следующий и замыкание
-            /*QPointF p1 = rotatedPolygon[j];
-            QPointF p2 = rotatedPolygon[k];*/
             edge = QLineF(rotatedPolygon[j], rotatedPolygon[k]);
 
             // Проверяем пересечение
-            if (level.intersects(edge, &resIntersection) ==
-                    QLineF::BoundedIntersection)
-                intersections.append(resIntersection.y());
-            /*if ((p1.y() <= yMid && p2.y() >= yMid) ||
-                (p1.y() >= yMid && p2.y() <= yMid)) {
-
-                if (std::abs(p2.y() - p1.y()) < 1e-9) {
-                    intersections.append(p1.x());
-                    intersections.append(p2.x());
-                } else {
-                    double t = (yMid - p1.y()) / (p2.y() - p1.y());
-                    double x = p1.x() + t * (p2.x() - p1.x());
-                    intersections.append(x);
-                }
-            }*/
-        }
-        for (auto a : intersections)
-        {
-            std::cout << "Intersection is " << a << std::endl;
+            if (level.intersects(edge, &resIntersection) == QLineF::BoundedIntersection){
+                if(!intersections.contains(resIntersection))
+                    intersections.append(resIntersection);
+            }
         }
 
         // Сортируем пересечения
-        std::sort(intersections.begin(), intersections.end());
-
+        std::sort(intersections.begin(), intersections.end(),
+                  [](const QPointF& a, const QPointF& b) {
+                      bool res = false;
+                      if (a.y() != b.y())
+                          res = a.y() < b.y();
+                      return res;
+                  });
         // Создаем трапеции между пересечениями
         for (int j = 0; j < intersections.size() - 1; j += 2) {
-            double y1 = intersections[j];
-            double y2 = intersections[j + 1];
+            double y1 = intersections[j].y();
+            double y2 = intersections[j + 1].y();
 
             if (y2 - y1 < 1e-9) {
                 continue;
