@@ -267,7 +267,7 @@ Window {
 
                 // Рисуем ориентированный прямоугольник если включено
                 if (decomposer.showOrientedRect) {
-                    // drawOrientedRect(ctx)
+                    drawOrientedRect(ctx)
                 }
 
                 // Рисуем исходный полигон
@@ -279,7 +279,7 @@ Window {
 
             function drawOriginalPolygonWithHoles(ctx) {
                 var polygon = decomposer.originalPolygon
-                var holesArray = decomposer.holes_2Darray
+                var holesArray = decomposer.holes_2Darray // массив holes inside
                 var i
                 if (!polygon || polygon.length < 3) return
 
@@ -304,23 +304,12 @@ Window {
                         ctx.lineTo(onePoly[i].x, onePoly[i].y)
                     }
                     ctx.closePath()
-                    ctx.fillStyle = "red"
+                    ctx.fillStyle = "rgba(255, 0, 0, 0.4)"
                     ctx.strokeStyle = "red"
                     ctx.lineWidth = 2
                     ctx.fill()
                     ctx.stroke()
                 }
-
-                // Рисуем вершины
-                /*for (var j = 0; j < polygon.length; j++) {
-                    ctx.beginPath()
-                    ctx.arc(polygon[j].x, polygon[j].y, 4, 0, Math.PI * 2)
-                    ctx.fillStyle = "green"
-                    ctx.fill()
-                    ctx.strokeStyle = "darkred"
-                    ctx.lineWidth = 1
-                    ctx.stroke()
-                }*/
             }
 
             function drawDecomposition(ctx) {
@@ -377,24 +366,25 @@ Window {
             }
 
             function drawOrientedRect(ctx) {
-                var rect = decomposer.orientedRect
-                if (!rect || rect.length !== 4) return
+                var rectArray = decomposer.orientedHoleRects // масив описанных rect для holes
+                if (!rectArray || rectArray[0].length !== 4) return
 
-                ctx.beginPath()
-                ctx.moveTo(rect[0].x, rect[0].y)
+                for (var currRect of rectArray) {
+                    ctx.beginPath()
+                    ctx.moveTo(currRect[0].x, currRect[0].y)
+                    for(var i = 1; i < currRect.length; i++){
+                        ctx.lineTo(currRect[i].x, currRect[i].y)
+                    }
+                    ctx.closePath()
 
-                for (var i = 1; i < rect.length; i++) {
-                    ctx.lineTo(rect[i].x, rect[i].y)
+                    ctx.fillStyle = "rgba(153, 204, 0, 0.1)"
+                    ctx.strokeStyle = "#99CC00"
+                    ctx.lineWidth = 2
+                    ctx.setLineDash([5, 5])
+                    ctx.fill()
+                    ctx.stroke()
+                    ctx.setLineDash([])
                 }
-                ctx.closePath()
-
-                ctx.fillStyle = "rgba(153, 204, 0, 0.1)"
-                ctx.strokeStyle = "#99CC00"
-                ctx.lineWidth = 2
-                ctx.setLineDash([5, 5])
-                ctx.fill()
-                ctx.stroke()
-                ctx.setLineDash([])
             }
 
             function drawSweepLine(ctx) {

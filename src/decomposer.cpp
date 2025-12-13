@@ -80,6 +80,25 @@ QVariantList Decomposer::orientedRect() const {
     return list;
 }
 
+QVariantList Decomposer::orientedHoleRects() const {
+    QVariantList result;
+    QVariantList row;
+
+    // комбинируем в одном QVariantList все остальные QVariantList'ы
+    for (const auto &rect : m_orientedHoleRects) {
+        for(const auto &p : rect) {
+            QVariantMap pointMap;
+            pointMap["x"] = p.x();
+            pointMap["y"] = p.y();
+            row.append(pointMap);
+        }
+        result.append(QVariant::fromValue(row));
+        row.clear();
+    }
+
+    return result;
+}
+
 double Decomposer::sweepAngle() const {
     return m_sweepAngle;
 }
@@ -134,6 +153,7 @@ void Decomposer::updateDecomposition() {
     // Очищаем предыдущие результаты
     m_decompositionCells.clear();
     m_orientedRect.clear();
+    m_orientedHoleRects.clear();
 
     if (m_originalPolygon.size() < 3) {
         emit decompositionCellsChanged();
@@ -143,6 +163,7 @@ void Decomposer::updateDecomposition() {
 
     // Вычисляем ориентированный ограничивающий прямоугольник
     m_orientedRect = getOrientedBoundingRect(m_originalPolygon, m_sweepAngle);
+    m_orientedHoleRects = getOrientedBoundingHoleRects(m_originalPolygon, m_holes,m_sweepAngle);
 
     // Выполняем трапецоидальную декомпозицию
     std::vector<QPolygonF> cells = trapezoidalDecomposition(m_originalPolygon, m_sweepAngle);
@@ -255,10 +276,28 @@ std::vector<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& pol
     return cells;
 }
 
+QList<QPolygonF> Decomposer::getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes, double angleDegrees) {
+    QList<QPolygonF> orientedRects;
+
+    if (polygon.size() < 3) {
+        return QList<QPolygonF>{};
+    }
+    if (holes.count() < 1){
+        return QList<QPolygonF>{};
+    }
+
+    for(const auto& currHole: holes) {
+        QPolygonF currOrieRect = getOrientedBoundingRect(currHole, angleDegrees);
+        orientedRects.append(currOrieRect);
+    }
+
+    return orientedRects;
+}
+
 // Ориентированный ограничивающий прямоугольник
 QPolygonF Decomposer::getOrientedBoundingRect(const QPolygonF& polygon, double angleDegrees) {
     if (polygon.size() < 3) {
-        return QPolygonF();
+        return QPolygonF{};
     }
 
     // Вычисляем центр полигона
@@ -354,6 +393,7 @@ void Decomposer::createDefaultPolygon() {
 
 void Decomposer::createPolygonWithHoles() {
     m_originalPolygon.clear();
+    m_holes.clear();
     // Шестиугольник
     m_originalPolygon << QPointF(200, 100)
                       << QPointF(400, 100)
@@ -362,15 +402,22 @@ void Decomposer::createPolygonWithHoles() {
                       << QPointF(200, 400)
                       << QPointF(100, 250);
     QPolygonF oneHole;
-    oneHole << QPointF(250, 250)
-            << QPointF(250, 200)
-            << QPointF(200, 200)
-            << QPointF(200, 250);
+    oneHole << QPointF(180, 180)
+            << QPointF(270, 180)
+            << QPointF(300, 225)
+            << QPointF(270, 270)
+            << QPointF(180, 270)
+            << QPointF(150, 225);
+
     m_holes.append(oneHole);
     QPolygonF secHole;
-    secHole << QPointF(300, 350)
+    /*secHole << QPointF(300, 350)
             << QPointF(350, 350)
             << QPointF(350, 300)
-            << QPointF(300, 300);
+            << QPointF(300, 300);*/
+    secHole << QPointF(289.64, 325.00)
+            << QPointF(325.00, 360.36)
+            << QPointF(360.36, 325.00)
+            << QPointF(325.00, 289.64);
     m_holes.append(secHole);
 }

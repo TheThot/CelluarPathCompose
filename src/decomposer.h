@@ -23,6 +23,7 @@ class Decomposer : public QObject
     Q_PROPERTY(bool showOrientedRect READ showOrientedRect WRITE setShowOrientedRect NOTIFY showOrientedRectChanged)
     Q_PROPERTY(QVariantList test_2Darray READ test_2Darray WRITE setTest_2Darray)
     Q_PROPERTY(QVariantList holes_2Darray READ holes_2Darray NOTIFY holesPolygonsChanged)
+    Q_PROPERTY(QVariantList orientedHoleRects READ orientedHoleRects NOTIFY orientedHoleRectsChanged)
 
 public:
     explicit Decomposer(QObject *parent = nullptr);
@@ -32,6 +33,7 @@ public:
     QVariantList originalPolygon() const;
     QVariantList decompositionCells() const;
     QVariantList orientedRect() const;
+    QVariantList orientedHoleRects() const;
     double sweepAngle() const;
     bool showDecomposition() const;
     bool showOrientedRect() const;
@@ -81,16 +83,34 @@ signals:
     void showDecompositionChanged();
     void showOrientedRectChanged();
     void holesPolygonsChanged();
+    void orientedHoleRectsChanged();
 
 private:
     // Алгоритмы декомпозиции
     std::vector<QPolygonF> trapezoidalDecomposition(const QPolygonF& polygon, double sweepAngle);
     QPolygonF getOrientedBoundingRect(const QPolygonF& polygon, double angleDegrees);
+    QList<QPolygonF> getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes, double angleDegrees);
 
     // Утилиты
     QPointF rotatePoint(const QPointF& point, double angle);
     QPointF inverseRotatePoint(const QPointF& point, double angle);
     double computePolygonArea(const QPolygonF& polygon) const;
+    template< typename Type > void configListVariantLists(Type in) {
+        QVariantList result;
+        QVariantList row;
+
+        // комбинируем в одном QVariantList все остальные QVariantList'ы
+        for (const auto &one : in) {
+            for(const auto &p : one) {
+                QVariantMap pointMap;
+                pointMap["x"] = p.x();
+                pointMap["y"] = p.y();
+                row.append(pointMap);
+            }
+            result.append(QVariant::fromValue(row));
+            row.clear();
+        }
+    }
 
     // Данные
     QPolygonF m_originalPolygon;
@@ -100,6 +120,7 @@ private:
     bool m_showDecomposition;
     bool m_showOrientedRect;
     QList<QPolygonF> m_holes;
+    QList<QPolygonF> m_orientedHoleRects;
 
     // Предопределенные полигоны
     void createDefaultPolygon();
