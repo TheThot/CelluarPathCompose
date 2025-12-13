@@ -2,5 +2,6 @@
     <qresource prefix="/qml">
         <file alias="main.qml">src/main.qml</file>
         <file alias="Toolbar.qml">src/Toolbar.qml</file>
+        <file alias="MyCanvas.qml">src/MyCanvas.qml</file>
     </qresource>
 </RCC>
