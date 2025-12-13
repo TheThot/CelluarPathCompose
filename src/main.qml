@@ -460,8 +460,7 @@ Window {
                 }
 
                 Text {
-                    /*text: "Angle: " + angleSlider.value.toFixed(1) + "°"*/
-                    text: "Angle: " + 0 + "°"
+                    text: "Angle: " + myToolbar.sweepAngle.toFixed(1) + "°"
                     color: "#34495e"
                 }
             }
@@ -480,7 +479,7 @@ Window {
     }
 
     // Таймер для плавной анимации угла
-    Timer {
+    /*Timer {
         id: animationTimer
         interval: 50
         repeat: true
@@ -495,7 +494,7 @@ Window {
                 direction *= -1
             }
             // TODO emit change
-            // myToolbar.sweepAngle.value = animationAngle
+            //myToolbar.sweepAngle.value = animationAngle
         }
     }
 
@@ -515,5 +514,5 @@ Window {
             font.pixelSize: 12
             leftPadding: animateCheck.indicator.width + 5
         }
-    }
+    }*/
 }
