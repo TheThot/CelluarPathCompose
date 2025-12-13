@@ -90,6 +90,8 @@ private:
     std::vector<QPolygonF> trapezoidalDecomposition(const QPolygonF& polygon, double sweepAngle);
     QPolygonF getOrientedBoundingRect(const QPolygonF& polygon, double angleDegrees);
     QList<QPolygonF> getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes, double angleDegrees);
+    QList<QPolygonF> boustrophedonDecomposition(const QPolygonF& polygon, const QList<QPolygonF>& holes,
+                                                                  const QList<QPolygonF>& orientedHoleRects, double sweepAngle);
 
     // Утилиты
     QPointF rotatePoint(const QPointF& point, double angle);

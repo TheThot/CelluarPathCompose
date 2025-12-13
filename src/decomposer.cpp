@@ -276,6 +276,11 @@ std::vector<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& pol
     return cells;
 }
 
+QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon, const QList<QPolygonF>& holes,
+                                                              const QList<QPolygonF>& orientedHoleRects, double sweepAngle) {
+    return QList<QPolygonF>{};
+}
+
 QList<QPolygonF> Decomposer::getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes, double angleDegrees) {
     QList<QPolygonF> orientedRects;
 
