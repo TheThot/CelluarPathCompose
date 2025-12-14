@@ -86,24 +86,39 @@ signals:
     void orientedHoleRectsChanged();
 
 private:
+    enum class OrientPointNames
+    {
+        LeftBottom = 0,     // [0] - лев ниж
+        RightBottom = 1,    // [1] - прав ниж
+        RightTop = 2,       // [2] - прав верх
+        LeftTop = 3         // [3] - лев верх
+    };
+    // против часовой стрелки ориентация правосторонняя сист коорд
+    enum class OrientedLine
+    {
+        ParallelSweepL = 2,
+        PerpendiclSweepU = 1,
+        ParallelSweepR = 0,
+        PerpendiclSweepD = 3
+    }; // обозначает каждую сторону описывающего прямоугольника
     // Алгоритмы декомпозиции
     std::vector<QPolygonF> trapezoidalDecomposition(const QPolygonF& polygon, double sweepAngle);
-    QPolygonF getOrientedBoundingRect(const QPolygonF& polygon, double angleDegrees);
+    QPolygonF getOrientedBoundingRect(const QPolygonF& polygon, QMap<OrientedLine, QLineF>& currOrient, double angleDegrees);
     QList<QPolygonF> getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes, double angleDegrees);
     QList<QPolygonF> boustrophedonDecomposition(const QPolygonF& polygon, const QList<QPolygonF>& holes,
-                                                                  const QList<QPolygonF>& orientedHoleRects, double sweepAngle);
+                                                const QList<QPolygonF>& orientedHoleRects, double sweepAngle);
 
     // Утилиты
     QPointF rotatePoint(const QPointF& point, double angle);
     QPointF inverseRotatePoint(const QPointF& point, double angle);
     double computePolygonArea(const QPolygonF& polygon) const;
-    template< typename Type > void configListVariantLists(Type in) {
+    template< typename Type > QVariantList configListVariantLists(Type in_array) const{
         QVariantList result;
         QVariantList row;
 
         // комбинируем в одном QVariantList все остальные QVariantList'ы
-        for (const auto &one : in) {
-            for(const auto &p : one) {
+        for (const auto &one_elem : in_array) {
+            for(const auto &p : one_elem) {
                 QVariantMap pointMap;
                 pointMap["x"] = p.x();
                 pointMap["y"] = p.y();
@@ -112,6 +127,7 @@ private:
             result.append(QVariant::fromValue(row));
             row.clear();
         }
+        return result;
     }
 
     // Данные
@@ -123,6 +139,7 @@ private:
     bool m_showOrientedRect;
     QList<QPolygonF> m_holes;
     QList<QPolygonF> m_orientedHoleRects;
+    QList<QMap<OrientedLine, QLineF>> m_mapOriendtedHoleRectLines; // переменная с информацией какая из ограничивающего holes фигуры паралельна галсу или нет
 
     // Предопределенные полигоны
     void createDefaultPolygon();
