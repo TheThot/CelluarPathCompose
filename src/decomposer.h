@@ -26,6 +26,7 @@ class Decomposer : public QObject
     Q_PROPERTY(QVariantList orientedHoleRects READ orientedHoleRects NOTIFY orientedHoleRectsChanged)
 
 public:
+
     explicit Decomposer(QObject *parent = nullptr);
 
     // Основные свойства
@@ -86,6 +87,19 @@ signals:
     void orientedHoleRectsChanged();
 
 private:
+    template <typename T>
+    inline std::vector<int> sort_indexes(const QList<T> &v) {
+
+        // initialize original index locations
+        std::vector<int> idx(v.size());
+        std::iota(idx.begin(), idx.end(), 0);
+
+        std::sort(idx.begin(), idx.end(),
+                  [&v](int i1, int i2) {return v[i1] < v[i2];});
+
+        return idx;
+    }
+
     enum class OrientPointNames
     {
         LeftBottom = 0,     // [0] - лев ниж
@@ -94,6 +108,10 @@ private:
         LeftTop = 3         // [3] - лев верх
     };
     // против часовой стрелки ориентация правосторонняя сист коорд
+    // [3 - PerpendiclSweepD] 3 и 0 точки,
+    // [0 - ParallelSweepR] 0 и 1,
+    // [1 - PerpendiclSweepU] 1 и 2 точки,
+    // [2 - ParallelSweepL] 2 и 3 точки
     enum class OrientedLine
     {
         ParallelSweepL = 2,
@@ -106,12 +124,31 @@ private:
     QPolygonF getOrientedBoundingRect(const QPolygonF& polygon, QMap<OrientedLine, QLineF>& currOrient, double angleDegrees);
     QList<QPolygonF> getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes, double angleDegrees);
     QList<QPolygonF> boustrophedonDecomposition(const QPolygonF& polygon, const QList<QPolygonF>& holes,
-                                                const QList<QPolygonF>& orientedHoleRects, double sweepAngle);
+                                                const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
+                                                double sweepAngle);
+    QList<QPolygonF> boustrophedonDecomposition_compact(const QPolygonF& polygon, const QList<QPolygonF>& holes,
+                                                        const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
+                                                        double sweepAngle);
 
     // Утилиты
+    template <typename T>
+    T rotationStruct(const T& v, double sweepAngle);
+    void newParallFormingRoutine(const QMap<OrientedLine, QLineF>& inMap,
+                                 const QPolygonF& survPolyBound,
+                                 QLineF& returnL,
+                                 QLineF& returnR);
+    void newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap,
+                                 const QPolygonF& hole,
+                                 QLineF& returnUp,
+                                 QLineF& returnDown);
     QPointF rotatePoint(const QPointF& point, double angle);
     QPointF inverseRotatePoint(const QPointF& point, double angle);
     double computePolygonArea(const QPolygonF& polygon) const;
+    void intersectionListFormimgRoutine(const QLineF& l1, const QLineF& l2,
+                                        QList<QPointF>& intersections_list,
+                                        QLineF::IntersectionType foundingType);
+    QList<double> distanceToPointRoutine(const QPointF& point, const QList<QPointF>& intersections_list);
+
     template< typename Type > QVariantList configListVariantLists(Type in_array) const{
         QVariantList result;
         QVariantList row;
