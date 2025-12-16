@@ -23,7 +23,7 @@ Canvas {
         drawSweepLine(ctx)
 
         if (decomposer.showDecomposition) {
-            drawDecomposition(ctx)
+            showPolyWithHoles ? drawBPDDecomposition(ctx) : drawDecomposition(ctx)
         }
 
         if (decomposer.showOrientedRect) {
@@ -53,6 +53,27 @@ Canvas {
 
         holesArray.forEach(function(onePoly) {
             drawPolygon(ctx, onePoly, "red", "rgba(255, 0, 0, 0.4)", 2)
+        })
+    }
+
+    function drawBPDDecomposition(ctx) {
+        var cells = decomposer.bpdDecompositionCells
+        if (!cells || cells.length === 0) return
+
+        var colors = [
+            "rgba(51, 181, 229, 0.3)",
+            "rgba(153, 204, 0, 0.3)",
+            "rgba(255, 187, 51, 0.3)",
+            "rgba(255, 68, 68, 0.3)",
+            "rgba(170, 102, 204, 0.3)",
+            "rgba(102, 204, 204, 0.3)"
+        ]
+
+        cells.forEach(function(cell, i) {
+            if (!cell.points || cell.points.length < 3) return
+
+            drawPolygon(ctx, cell.points, "#33B5E5", colors[i % colors.length], 1)
+            drawAreaLabel(ctx, cell)
         })
     }
 

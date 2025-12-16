@@ -36,6 +36,25 @@ QVariantList Decomposer::holes_2Darray() const{
     return configListVariantLists<QList<QPolygonF>>(m_holes);
 }
 
+QVariantList Decomposer::bpdDecompositionCells() const {
+    QVariantList cellsList;
+    for (const QPolygonF &cell : m_bpd_decompositionCells) {
+        QVariantList polygonList;
+        for (const QPointF &point : cell) {
+            QVariantMap pointMap;
+            pointMap["x"] = point.x();
+            pointMap["y"] = point.y();
+            polygonList.append(pointMap);
+        }
+        QVariantMap cellMap;
+        cellMap["points"] = polygonList;
+        cellMap["area"] = computePolygonArea(cell);
+        cellsList.append(cellMap);
+    }
+    return cellsList;
+}
+
+
 QVariantList Decomposer::decompositionCells() const {
     QVariantList cellsList;
     for (const QPolygonF &cell : m_decompositionCells) {
@@ -124,6 +143,8 @@ void Decomposer::updateDecomposition() {
     m_decompositionCells.clear();
     m_orientedRect.clear();
     m_orientedHoleRects.clear();
+    m_mapOriendtedHoleRectLines.clear();
+    m_bpd_decompositionCells.clear();
 
     if (m_originalPolygon.size() < 3) {
         emit decompositionCellsChanged();
@@ -134,11 +155,21 @@ void Decomposer::updateDecomposition() {
     // Вычисляем ориентированный ограничивающий прямоугольник
     QMap<OrientedLine, QLineF> buff = {};
     m_orientedRect = getOrientedBoundingRect(m_originalPolygon, buff, m_sweepAngle);
+    for(int i = 0; i < m_orientedRect.count(); ++i){
+        for(int j = 0; j < m_orientedRect.count(); ++j) {
+            uint64_t maxNumBuff = static_cast<uint64_t>(QLineF(m_orientedRect[i], m_orientedRect[j]).length());
+            if (maxBoundSurvPolyRad < maxNumBuff)
+                maxBoundSurvPolyRad = maxNumBuff * 2;
+        }
+    }
     m_orientedHoleRects = getOrientedBoundingHoleRects(m_originalPolygon, m_holes,m_sweepAngle);
 
     // Выполняем трапецоидальную декомпозицию
     std::vector<QPolygonF> cells = trapezoidalDecomposition(m_originalPolygon, m_sweepAngle);
     m_decompositionCells = QVector<QPolygonF>(cells.begin(), cells.end());
+
+    // Выполняем бустрофедон декомпозицию
+    m_bpd_decompositionCells = boustrophedonDecomposition_compact(m_originalPolygon, m_holes, m_mapOriendtedHoleRectLines, m_sweepAngle);
 
     emit decompositionCellsChanged();
     emit orientedRectChanged();
@@ -242,8 +273,15 @@ std::vector<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& pol
 
 void Decomposer::intersectionListFormimgRoutine(const QLineF& l1, const QLineF& l2, QList<QPointF>& intersections_list, QLineF::IntersectionType foundingType)
 {
-    QPointF resIntersection;
-    if (l1.intersects(l2, &resIntersection) == QLineF::BoundedIntersection)
+    // на случай QLineF::UnboundedIntersection ограничиваем возможные пересечения за пределами области определения линий самым большим размером = max(SurvPolyBoundRect)
+    QPointF resIntersection{0,0};
+    QLineF::IntersectionType flag = l1.intersects(l2, &resIntersection);
+
+    if(flag != 0) // берём l2 в условие потому что это линия должна быть со структуры полигона with holes
+        if(static_cast<uint64_t>(QLineF(l2.p1(), resIntersection).length()) > maxBoundSurvPolyRad)
+            return;
+
+    if (flag == foundingType)
         if (!intersections_list.contains(resIntersection))
             intersections_list.append(resIntersection);
 }
@@ -332,7 +370,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
                                                                 const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
                                                                 double sweepAngle)
 {
-    QList<QPolygonF> resCells = {};
+    QList<QPolygonF> resCells;
 
     if (polygon.size() < 3) {
         return resCells;
@@ -360,7 +398,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         return QLineF(in[0], in[1]);
     };
     // ------------!!!!!!!!!!!!!!!!!!!!!!!---------------------------
-
+    QList<qreal> yLevelsOrientLines;
     for(int i = 0; i < mapOriendtedHoleRectLines.count(); ++i) //распаковываем по одной штук на каждую hole
     {
         //auto orntLn = static_cast<OrientedLine>(numLine); // OrientedLine
@@ -371,14 +409,14 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
                                 copy[i][OrientedLine::ParallelSweepL],
                                 copy[i][OrientedLine::ParallelSweepR]);
         //  TODO ------------- можно в цикл организовать ------
-        m_mapOriendtedHoleRectLines[i][OrientedLine::ParallelSweepL] = copy[i][OrientedLine::ParallelSweepL];
-        m_mapOriendtedHoleRectLines[i][OrientedLine::ParallelSweepR] = copy[i][OrientedLine::ParallelSweepR];
+        /*m_mapOriendtedHoleRectLines[i][OrientedLine::ParallelSweepL] = copy[i][OrientedLine::ParallelSweepL];
+        m_mapOriendtedHoleRectLines[i][OrientedLine::ParallelSweepR] = copy[i][OrientedLine::ParallelSweepR];*/
         // ----------------------------------------------------
 
         // 1. И формируется новые U и D границы
-        newBorderFormingRoutine(mapOriendtedHoleRectLines[i], holes[i],
+        /*newBorderFormingRoutine(mapOriendtedHoleRectLines[i], holes[i],
                                 copy[i][OrientedLine::PerpendiclSweepU],
-                                copy[i][OrientedLine::PerpendiclSweepD]);
+                                copy[i][OrientedLine::PerpendiclSweepD]);*/ // ???wtf???
 
         // 2. В compact реализации 2 и 3 пункт пропускаем
         // 4. Поворот Parallel L и R
@@ -388,12 +426,64 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         buff = flambdaDirect(copy[i][OrientedLine::ParallelSweepR]);
         copy[i][OrientedLine::ParallelSweepR] = flambdaReverse(rotationStruct<QPolygonF>(buff, sweepAngle));
         // ----------------------------------------------------
+        // упорядовачиваем координаты вершин, уникальные, линий ограничивающих зоны
+        // линии паралельны потому без разницы [0] p1 или [1] p2
+        if (!yLevelsOrientLines.contains(copy[i][OrientedLine::ParallelSweepL].p1().y())) {
+            yLevelsOrientLines.append(copy[i][OrientedLine::ParallelSweepL].p1().y());
+        }
+        if (!yLevelsOrientLines.contains(copy[i][OrientedLine::ParallelSweepR].p1().y())) {
+            yLevelsOrientLines.append(copy[i][OrientedLine::ParallelSweepR].p1().y());
+        }
     }
     // поворачиваем полигон SurvPoly
     auto rotatedPolygon = rotationStruct<QPolygonF>(polygon, sweepAngle);
-
     // после того как весь QList mapOriendtedHoleRectLines обработан и сориентрован выполняем деление на зоны
-    // 4. формирование xLevels по аналогии с trapezoidalCellAlgorithm и зон
+    // 4. формирование yLevels по аналогии с trapezoidalCellAlgorithm и зон
+    // упорядовачиваем координаты вершин, уникальные
+    QList<qreal> yLevels;
+    for (const QPointF& point : rotatedPolygon) {
+        if (!yLevels.contains(point.y())) {
+            yLevels.append(point.y());
+        }
+    }
+    std::sort(yLevels.begin(), yLevels.end());
+    std::sort(yLevelsOrientLines.begin(), yLevelsOrientLines.end());
+    //сформируем для проверки две крайних боковых зоны
+    double yMinPoly = yLevels[0], yMinHole = yLevelsOrientLines[0];
+    QPolygonF buff;
+    QLineF level, edge;
+    level = QLineF(QPointF(-10e5, yMinHole),
+                        QPointF(10e5, yMinHole));
+    QList<QPointF> intersections;
+    for (int j = 0; j < rotatedPolygon.size(); ++j) {
+        int k = (j + 1) % rotatedPolygon.size(); // следующий и замыкание
+        if(rotatedPolygon[j].y() >= yMinPoly && rotatedPolygon[j].y() < yMinHole){
+            buff.append(rotatedPolygon[j]);
+        }
+        edge = QLineF(rotatedPolygon[j], rotatedPolygon[k]);
+        intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection);
+    }
+    buff.append(intersections[0]); buff.append(intersections[1]);
+    buff = rotationStruct<QPolygonF>(buff, -sweepAngle);
+    buff = sortPolygonClockwise(buff);
+    resCells.append(buff);
+    // ------------ закончили один край ---------- приступили к другому ----------------
+    buff.clear(); intersections.clear();
+    yMinPoly = yLevels[yLevels.count()-1]; yMinHole = yLevelsOrientLines[yLevelsOrientLines.count()-1];
+    level = QLineF(QPointF(-10e5, yMinHole),
+                   QPointF(10e5, yMinHole));
+    for (int j = 0; j < rotatedPolygon.size(); ++j) {
+        int k = (j + 1) % rotatedPolygon.size(); // следующий и замыкание
+        if(rotatedPolygon[j].y() <= yMinPoly && rotatedPolygon[j].y() > yMinHole){
+            buff.append(rotatedPolygon[j]);
+        }
+        edge = QLineF(rotatedPolygon[j], rotatedPolygon[k]);
+        intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection);
+    }
+    buff.append(intersections[0]); buff.append(intersections[1]);
+    buff = rotationStruct<QPolygonF>(buff, -sweepAngle);
+    buff = sortPolygonClockwise(buff);
+    resCells.append(buff);
 
     return resCells;
 }
@@ -455,6 +545,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
 
 QList<QPolygonF> Decomposer::getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes,
                                                           double angleDegrees) {
+//    m_mapOriendtedHoleRectLines.clear();
     QList<QPolygonF> orientedRects;
 
     if (polygon.size() < 3) {
@@ -464,8 +555,8 @@ QList<QPolygonF> Decomposer::getOrientedBoundingHoleRects(const QPolygonF& polyg
         return QList<QPolygonF>{};
     }
 
+    QMap<OrientedLine, QLineF> buff;
     for(const auto& currHole: holes) {
-        QMap<OrientedLine, QLineF> buff = {};
         QPolygonF currOrieRect = getOrientedBoundingRect(currHole, buff, angleDegrees);
         m_mapOriendtedHoleRectLines.append(buff);
         orientedRects.append(currOrieRect);
@@ -616,3 +707,67 @@ void Decomposer::createPolygonWithHoles() {
             << QPointF(325.00, 289.64);
     m_holes.append(secHole);
 }
+
+//проверка лежит ли точка на прямой
+bool Decomposer::isPointOnLineF(const QPointF& p, const QLineF& line){
+    double len = line.length(); //исходная длина прямой
+    QLineF lineP1(line.p1(), p), lineP2(p, line.p2());
+    double len1, len2;
+    len1 = lineP1.length();
+    len2 = lineP2.length();
+    double sum = len1 + len2;
+    bool isEq = std::abs(len - sum) < 0.1;
+    //в случае если сумма len1 + len2 == len значит точка на прямой
+    return isEq;
+}
+
+double Decomposer::lineEquationKoeff(const QLineF& inLine){
+    double res;
+    res = ( inLine.p2().x() - inLine.p1().x() ) / ( inLine.p2().y() + inLine.p1().y() );
+    return res;
+}
+
+//проверка на направление вращения полигона true - clockwise; false - counter-clockwise
+bool Decomposer::isPolyInClockwiseMannerRot(const QList<QLineF>& polygonPathArray){
+    double sum = 0;
+    for (const QLineF& curr : polygonPathArray){
+        sum += lineEquationKoeff(curr);
+    }
+    bool res = sum > 0;
+    return res;
+}
+
+QPolygonF Decomposer::sortPolygonClockwise(QPolygonF polygon) {
+    if (polygon.size() < 3) return polygon;
+
+    // Находим самую нижнюю-левую точку (опорную точку)
+    QPointF pivot = polygon[0];
+    for (const QPointF& p : polygon) {
+        if (p.y() < pivot.y() ||
+            (std::abs(p.y() - pivot.y()) < 1e-9 && p.x() < pivot.x())) {
+            pivot = p;
+        }
+    }
+
+    // Сортируем по полярному углу относительно опорной точки
+    std::sort(polygon.begin(), polygon.end(),
+              [pivot](const QPointF& a, const QPointF& b) {
+                  if (a == pivot) return true;
+                  if (b == pivot) return false;
+
+                  double angleA = std::atan2(a.y() - pivot.y(), a.x() - pivot.x());
+                  double angleB = std::atan2(b.y() - pivot.y(), b.x() - pivot.x());
+
+                  if (std::abs(angleA - angleB) < 1e-9) {
+                      // Для коллинеарных точек сортируем по расстоянию
+                      double distA = std::hypot(a.x() - pivot.x(), a.y() - pivot.y());
+                      double distB = std::hypot(b.x() - pivot.x(), b.y() - pivot.y());
+                      return distA < distB;
+                  }
+
+                  return angleA < angleB;
+              });
+
+    return polygon;
+}
+

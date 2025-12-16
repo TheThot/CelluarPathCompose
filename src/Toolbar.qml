@@ -143,7 +143,6 @@ Rectangle {
             to: 180
             value: 0
             stepSize: 1
-            onValueChanged: decomposer.updateDecomposition()
         }
 
         // Управление видимостью

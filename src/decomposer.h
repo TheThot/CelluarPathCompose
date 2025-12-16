@@ -17,6 +17,7 @@ class Decomposer : public QObject
     Q_OBJECT
     Q_PROPERTY(QVariantList originalPolygon READ originalPolygon WRITE setOriginalPolygon NOTIFY originalPolygonChanged)
     Q_PROPERTY(QVariantList decompositionCells READ decompositionCells NOTIFY decompositionCellsChanged)
+    Q_PROPERTY(QVariantList bpdDecompositionCells READ bpdDecompositionCells NOTIFY decompositionCellsChanged)
     Q_PROPERTY(QVariantList orientedRect READ orientedRect NOTIFY orientedRectChanged)
     Q_PROPERTY(double sweepAngle READ sweepAngle WRITE setSweepAngle NOTIFY sweepAngleChanged)
     Q_PROPERTY(bool showDecomposition READ showDecomposition WRITE setShowDecomposition NOTIFY showDecompositionChanged)
@@ -33,6 +34,7 @@ public:
     QVariantList holes_2Darray() const;
     QVariantList originalPolygon() const;
     QVariantList decompositionCells() const;
+    QVariantList bpdDecompositionCells() const;
     QVariantList orientedRect() const;
     QVariantList orientedHoleRects() const;
     double sweepAngle() const;
@@ -108,16 +110,12 @@ private:
         LeftTop = 3         // [3] - лев верх
     };
     // против часовой стрелки ориентация правосторонняя сист коорд
-    // [3 - PerpendiclSweepD] 3 и 0 точки,
-    // [0 - ParallelSweepR] 0 и 1,
-    // [1 - PerpendiclSweepU] 1 и 2 точки,
-    // [2 - ParallelSweepL] 2 и 3 точки
     enum class OrientedLine
     {
-        ParallelSweepL = 2,
-        PerpendiclSweepU = 1,
-        ParallelSweepR = 0,
-        PerpendiclSweepD = 3
+        ParallelSweepL = 2,     // [2 - ParallelSweepL] 2 и 3 точки
+        PerpendiclSweepU = 1,   // [1 - PerpendiclSweepU] 1 и 2 точки
+        ParallelSweepR = 0,     // [0 - ParallelSweepR] 0 и 1
+        PerpendiclSweepD = 3    // [3 - PerpendiclSweepD] 3 и 0 точки
     }; // обозначает каждую сторону описывающего прямоугольника
     // Алгоритмы декомпозиции
     std::vector<QPolygonF> trapezoidalDecomposition(const QPolygonF& polygon, double sweepAngle);
@@ -148,6 +146,10 @@ private:
                                         QList<QPointF>& intersections_list,
                                         QLineF::IntersectionType foundingType);
     QList<double> distanceToPointRoutine(const QPointF& point, const QList<QPointF>& intersections_list);
+    bool isPointOnLineF(const QPointF& p, const QLineF& line);
+    double lineEquationKoeff(const QLineF& inLine);
+    bool isPolyInClockwiseMannerRot(const QList<QLineF>& polygonPathArray);
+    QPolygonF sortPolygonClockwise(QPolygonF polygon);
 
     template< typename Type > QVariantList configListVariantLists(Type in_array) const{
         QVariantList result;
@@ -168,8 +170,10 @@ private:
     }
 
     // Данные
+    uint64_t maxBoundSurvPolyRad = 0;
     QPolygonF m_originalPolygon;
     QVector<QPolygonF> m_decompositionCells;
+    QList<QPolygonF> m_bpd_decompositionCells;
     QPolygonF m_orientedRect;
     double m_sweepAngle;
     bool m_showDecomposition;
