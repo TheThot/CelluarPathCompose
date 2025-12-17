@@ -320,7 +320,10 @@ void Decomposer::newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap
     for(int i = 0; i < hole.count(); ++i){
         int k = (i + 1) % hole.count();
         QLineF currHoleLine = QLineF(hole[i], hole[k]);
+        // для надёжности оба типа внутреннее и внешнее пересечения
+        intersectionListFormimgRoutine(currParallelOrientLineL, currHoleLine, intersectionsL_list, QLineF::UnboundedIntersection);
         intersectionListFormimgRoutine(currParallelOrientLineL, currHoleLine, intersectionsL_list, QLineF::BoundedIntersection);
+        intersectionListFormimgRoutine(currParallelOrientLineR, currHoleLine, intersectionsR_list, QLineF::UnboundedIntersection);
         intersectionListFormimgRoutine(currParallelOrientLineR, currHoleLine, intersectionsR_list, QLineF::BoundedIntersection);
     }
     //пересечения определены, после вычисляем расстояния соотвественно до D и U заносим в массив и сортируем
@@ -330,6 +333,7 @@ void Decomposer::newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap
 
     auto resIdxR = sort_indexes<double>(disR_list);
     auto resIdxL = sort_indexes<double>(disL_list);
+    //поскольку проверяется оба типа пересечений то небходимо делать доп фильтрацию точек уходящих в результат
 
     // теперь мы знаем индекс по intersectionsR_list и intersectionsL_list для hole линии пересечение и формируем U и D
     returnUp    = QLineF(intersectionsL_list[resIdxL[0]], intersectionsR_list[resIdxR[0]]);
@@ -414,9 +418,9 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         // ----------------------------------------------------
 
         // 1. И формируется новые U и D границы
-        /*newBorderFormingRoutine(mapOriendtedHoleRectLines[i], holes[i],
+        newBorderFormingRoutine(mapOriendtedHoleRectLines[i], holes[i],
                                 copy[i][OrientedLine::PerpendiclSweepU],
-                                copy[i][OrientedLine::PerpendiclSweepD]);*/ // ???wtf???
+                                copy[i][OrientedLine::PerpendiclSweepD]);
 
         // 2. В compact реализации 2 и 3 пункт пропускаем
         // 4. Поворот Parallel L и R
