@@ -127,8 +127,17 @@ private:
     QList<QPolygonF> boustrophedonDecomposition_compact(const QPolygonF& polygon, const QList<QPolygonF>& holes,
                                                         const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
                                                         double sweepAngle);
+    void upDownBorderFormingRoutineNewMannerJustLine(const QMap<OrientedLine, QLineF>& inMap,
+                                                    const QPolygonF& hole,
+                                                    QPolygonF& returnUp,
+                                                    QPolygonF& returnDown);
+    void upDownBorderFormingRoutineNewMannerReadyPoly(const QMap<OrientedLine, QLineF>& inMap,
+                                                     const QPolygonF& hole,
+                                                     QLineF& returnUp,
+                                                     QLineF& returnDown);
 
     // Утилиты
+    QLineF findLineBetweenLines(const QLineF& parall1, const QLineF& parall2, const QPointF& coord);
     template <typename T>
     T rotationStruct(const T& v, double sweepAngle);
     void newParallFormingRoutine(const QMap<OrientedLine, QLineF>& inMap,
@@ -147,9 +156,10 @@ private:
                                         QLineF::IntersectionType foundingType);
     QList<double> distanceToPointRoutine(const QPointF& point, const QList<QPointF>& intersections_list);
     bool isPointOnLineF(const QPointF& p, const QLineF& line);
-    double lineEquationKoeff(const QLineF& inLine);
-    bool isPolyInClockwiseMannerRot(const QList<QLineF>& polygonPathArray);
+    double lineEquationKoeff(const QPointF& p1, const QPointF& p2);
+    bool isPolyInClockwiseMannerRot(const QPointF* polygonPoints, uint size);
     QPolygonF sortPolygonClockwise(QPolygonF polygon);
+
 
     template< typename Type > QVariantList configListVariantLists(Type in_array) const{
         QVariantList result;
@@ -181,6 +191,7 @@ private:
     QList<QPolygonF> m_holes;
     QList<QPolygonF> m_orientedHoleRects;
     QList<QMap<OrientedLine, QLineF>> m_mapOriendtedHoleRectLines; // переменная с информацией какая из ограничивающего holes фигуры паралельна галсу или нет
+    enum class BCD_levels;
 
     // Предопределенные полигоны
     void createDefaultPolygon();

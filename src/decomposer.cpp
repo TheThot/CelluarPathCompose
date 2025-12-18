@@ -294,6 +294,105 @@ QList<double> Decomposer::distanceToPointRoutine(const QPointF& point, const QLi
     return result;
 }
 
+QLineF Decomposer::findLineBetweenLines(const QLineF& parall1, const QLineF& parall2, const QPointF& coord)
+{
+    // Получаем нормальный единичный вектор
+    QLineF normal = parall1.normalVector();
+    QPointF unitNormal = normal.p2() - normal.p1();
+
+    // Создаем линию через точку coord в перпендикулярном направлении
+    qreal length = 1e3;
+
+    auto approxToPrecise = QLineF{coord - unitNormal * length, coord + unitNormal * length};
+    QPointF preciseP;
+    parall1.intersects(approxToPrecise, &preciseP);
+    approxToPrecise.setP1(preciseP);
+    parall2.intersects(approxToPrecise, &preciseP);
+    approxToPrecise.setP2(preciseP);
+    return approxToPrecise;
+
+}
+
+void Decomposer::upDownBorderFormingRoutineNewMannerJustLine(const QMap<OrientedLine, QLineF>& inMap,
+                                                              const QPolygonF& hole,
+                                                              QPolygonF& returnUp,
+                                                             QPolygonF& returnDown)
+{
+    QPointF centerHole(0, 0);
+    for (const QPointF& p : hole) {
+        centerHole += p;
+    }
+    centerHole /= hole.size();
+
+    //линия делящая на U и D
+    auto midLine = findLineBetweenLines(inMap[OrientedLine::ParallelSweepL], inMap[OrientedLine::ParallelSweepR], centerHole);
+
+    // проверим какие из точек ParallelSweepL ParallelSweepR p1 или p2 ближе друг к другу?
+    QList<QLineF> box;
+    box       << QLineF(inMap[OrientedLine::ParallelSweepL].p2(), inMap[OrientedLine::ParallelSweepR].p2())
+              << QLineF(inMap[OrientedLine::ParallelSweepL].p1(), inMap[OrientedLine::ParallelSweepR].p2())
+              << QLineF(inMap[OrientedLine::ParallelSweepL].p2(), inMap[OrientedLine::ParallelSweepR].p1())
+              << QLineF(inMap[OrientedLine::ParallelSweepL].p1(), inMap[OrientedLine::ParallelSweepR].p1());
+    QList<double> distCheck;
+    for(const auto& currL : box){
+        distCheck.append(currL.length());
+    }
+
+    auto resIdx = sort_indexes<double>(distCheck);
+
+    returnUp << box[resIdx[0]].p1()
+             << box[resIdx[0]].p2()
+             << midLine.p1()
+             << midLine.p2();
+    returnDown  << box[resIdx[1]].p1()
+                << box[resIdx[1]].p2()
+                << midLine.p1()
+                << midLine.p2();
+}
+
+//not finilized yet
+void Decomposer::upDownBorderFormingRoutineNewMannerReadyPoly(const QMap<OrientedLine, QLineF>& inMap,
+                                                     const QPolygonF& hole,
+                                                     QLineF& returnUp,
+                                                     QLineF& returnDown)
+{
+    /*QPointF centerHole(0, 0);
+    for (const QPointF& p : hole) {
+        centerHole += p;
+    }
+    centerHole /= hole.size();
+
+    //линия делящая на U и D
+    auto midLine = findLineBetweenLines(inMap[OrientedLine::ParallelSweepL], inMap[OrientedLine::ParallelSweepR], centerHole);
+
+    // проверим какие из точек ParallelSweepL ParallelSweepR p1 или p2 ближе друг к другу?
+    QList<QLineF> box;
+    box       << QLineF(inMap[OrientedLine::ParallelSweepL].p2(), inMap[OrientedLine::ParallelSweepR].p2())
+              << QLineF(inMap[OrientedLine::ParallelSweepL].p1(), inMap[OrientedLine::ParallelSweepR].p2())
+              << QLineF(inMap[OrientedLine::ParallelSweepL].p2(), inMap[OrientedLine::ParallelSweepR].p1())
+              << QLineF(inMap[OrientedLine::ParallelSweepL].p1(), inMap[OrientedLine::ParallelSweepR].p1());
+    QList<double> distCheck;
+    for(const auto& currL : box){
+        distCheck.append(currL.length());
+    }
+
+    auto resIdx = sort_indexes<double>(distCheck);
+
+    QPolygonF biggerThanPolyInclusionUp, biggerThanPolyInclusionDown;
+    biggerThanPolyInclusionUp << box[resIdx[0]].p1()
+                              << box[resIdx[0]].p2()
+                              << midLine.p1()
+                              << midLine.p2();
+    biggerThanPolyInclusionDown << box[resIdx[1]].p1()
+                                << box[resIdx[1]].p2()
+                                << midLine.p1()
+                                << midLine.p2();
+
+    if(biggerThanPoly.containsPoint(polygon[j], Qt::WindingFill)){ // containsPoint QPolygonF нужно усиливать для точек на краю
+        buff.append(polygon[j]);
+    }*/
+}
+
 void Decomposer::newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap,
                                          const QPolygonF& hole,
                                          QLineF& returnUp,
@@ -326,6 +425,8 @@ void Decomposer::newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap
         intersectionListFormimgRoutine(currParallelOrientLineR, currHoleLine, intersectionsR_list, QLineF::UnboundedIntersection);
         intersectionListFormimgRoutine(currParallelOrientLineR, currHoleLine, intersectionsR_list, QLineF::BoundedIntersection);
     }
+    std::cout << "Count L intersections " << intersectionsL_list.count() << std::endl;
+    std::cout << "Count R intersections " << intersectionsR_list.count() << std::endl;
     //пересечения определены, после вычисляем расстояния соотвественно до D и U заносим в массив и сортируем
     // финальные линии returnUp и returnDown формируем мин расстоянием соответсвенно
     disR_list = distanceToPointRoutine(orientRectOverHole[OrientPointNames::RightBottom], intersectionsR_list);
@@ -368,6 +469,11 @@ T Decomposer::rotationStruct(const T& v, double sweepAngle) {
     return res;
 }
 
+enum class Decomposer::BCD_levels
+{
+    //TODO
+};
+
 // реализация деления полигона с отверстиями на зоны
 // задел для path construcion алгоритма туда-обратно
 QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF& polygon, const QList<QPolygonF>& holes,
@@ -403,8 +509,21 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
     };
     // ------------!!!!!!!!!!!!!!!!!!!!!!!---------------------------
     QList<qreal> yLevelsOrientLines;
+    QList<QList<qreal>> yLevelsHolesList;
+    yLevelsHolesList.reserve(mapOriendtedHoleRectLines.count());
+    for (int i = 0; i < mapOriendtedHoleRectLines.count(); ++i) {
+        yLevelsHolesList.append(QList<qreal>{});
+    }
+    QList<QPolygonF> readyPolyUp, readyPolyDown;
+    readyPolyUp.reserve(mapOriendtedHoleRectLines.count());
+    readyPolyDown.reserve(mapOriendtedHoleRectLines.count());
+    for (int i = 0; i < mapOriendtedHoleRectLines.count(); ++i) {
+        readyPolyUp.append(QPolygonF{});
+        readyPolyDown.append(QPolygonF{});
+    }
     for(int i = 0; i < mapOriendtedHoleRectLines.count(); ++i) //распаковываем по одной штук на каждую hole
     {
+        QLineF parallelSweepLRot, parallelSweepRRot;
         //auto orntLn = static_cast<OrientedLine>(numLine); // OrientedLine
 
         // Организация данных в новую структуру схожую с mapOriendtedHoleRectLines
@@ -418,25 +537,31 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         // ----------------------------------------------------
 
         // 1. И формируется новые U и D границы
-        newBorderFormingRoutine(mapOriendtedHoleRectLines[i], holes[i],
+        /*newBorderFormingRoutine(mapOriendtedHoleRectLines[i], holes[i],
                                 copy[i][OrientedLine::PerpendiclSweepU],
-                                copy[i][OrientedLine::PerpendiclSweepD]);
+                                copy[i][OrientedLine::PerpendiclSweepD]);*/
+        // cheat [готовый полигон]
+        upDownBorderFormingRoutineNewMannerJustLine(copy[i], holes[i],
+                                                    readyPolyUp[i],
+                                                    readyPolyDown[i]);
 
         // 2. В compact реализации 2 и 3 пункт пропускаем
         // 4. Поворот Parallel L и R
         //  TODO ------------- можно в цикл организовать ------
         QPolygonF buff = flambdaDirect(copy[i][OrientedLine::ParallelSweepL]);
-        copy[i][OrientedLine::ParallelSweepL] = flambdaReverse(rotationStruct<QPolygonF>(buff, sweepAngle));
+        parallelSweepLRot = flambdaReverse(rotationStruct<QPolygonF>(buff, sweepAngle));
         buff = flambdaDirect(copy[i][OrientedLine::ParallelSweepR]);
-        copy[i][OrientedLine::ParallelSweepR] = flambdaReverse(rotationStruct<QPolygonF>(buff, sweepAngle));
+        parallelSweepRRot = flambdaReverse(rotationStruct<QPolygonF>(buff, sweepAngle));
         // ----------------------------------------------------
         // упорядовачиваем координаты вершин, уникальные, линий ограничивающих зоны
         // линии паралельны потому без разницы [0] p1 или [1] p2
-        if (!yLevelsOrientLines.contains(copy[i][OrientedLine::ParallelSweepL].p1().y())) {
-            yLevelsOrientLines.append(copy[i][OrientedLine::ParallelSweepL].p1().y());
+        if (!yLevelsOrientLines.contains(parallelSweepLRot.p1().y())) {
+            yLevelsOrientLines.append(parallelSweepLRot.p1().y());
+            yLevelsHolesList[i].append(parallelSweepLRot.p1().y());
         }
-        if (!yLevelsOrientLines.contains(copy[i][OrientedLine::ParallelSweepR].p1().y())) {
-            yLevelsOrientLines.append(copy[i][OrientedLine::ParallelSweepR].p1().y());
+        if (!yLevelsOrientLines.contains(parallelSweepRRot.p1().y())) {
+            yLevelsOrientLines.append(parallelSweepRRot.p1().y());
+            yLevelsHolesList[i].append(parallelSweepRRot.p1().y());
         }
     }
     // поворачиваем полигон SurvPoly
@@ -468,7 +593,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection);
     }
     buff.append(intersections[0]); buff.append(intersections[1]);
-    buff = rotationStruct<QPolygonF>(buff, -sweepAngle);
+    buff = rotationStruct<QPolygonF>(buff, -sweepAngle); // поворачиваем обратно точки декомпозиции
     buff = sortPolygonClockwise(buff);
     resCells.append(buff);
     // ------------ закончили один край ---------- приступили к другому ----------------
@@ -485,9 +610,80 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection);
     }
     buff.append(intersections[0]); buff.append(intersections[1]);
-    buff = rotationStruct<QPolygonF>(buff, -sweepAngle);
+    buff = rotationStruct<QPolygonF>(buff, -sweepAngle); // поворачиваем обратно точки декомпозиции
     buff = sortPolygonClockwise(buff);
     resCells.append(buff);
+    // ------------ в промежутках ----------------
+    buff.clear(); intersections.clear();
+    for(int i = 0; i < copy.count() - 1; ++i)
+    {
+        int k = i + 1;
+        QLineF firstPar = copy[k][OrientedLine::ParallelSweepR];
+        QLineF secPar = copy[i][OrientedLine::ParallelSweepL]; // странно почему у i OrientedLine::ParallelSweepL у k OrientedLine::ParallelSweepR, а не наоборот [на подумать?]
+        QPolygonF biggerThanPoly, biggerThanPolyRev;
+        biggerThanPoly  << copy[k][OrientedLine::ParallelSweepR].p1()
+                        << copy[i][OrientedLine::ParallelSweepL].p1()
+                        << copy[i][OrientedLine::ParallelSweepL].p2()
+                        << copy[k][OrientedLine::ParallelSweepR].p2();
+        //условие положительное ли направление движения между firstPar и secPar или отрицательное
+        //std::cout << "Mannner biggerThanPoly rotation is clockwise " << isPolyInClockwiseMannerRot(biggerThanPoly.data(), biggerThanPoly.count()) << std::endl;
+        // на практике Mannner biggerThanPoly rotation is clockwise может являться индикатором актуальности этой cell 0 - добавляем, 1 - скипаем
+        if(isPolyInClockwiseMannerRot(biggerThanPoly.data(), biggerThanPoly.count()))
+            break;
+        for (int j = 0; j < polygon.size(); ++j) {
+            int w = (j + 1) % polygon.size(); // следующий и замыкание
+            edge = QLineF(polygon[j], polygon[w]);
+            if(biggerThanPoly.containsPoint(polygon[j], Qt::WindingFill)){ // containsPoint QPolygonF нужно усиливать для точек на краю
+                buff.append(polygon[j]);
+            }
+            intersectionListFormimgRoutine(firstPar, edge, intersections, QLineF::BoundedIntersection);
+            intersectionListFormimgRoutine(secPar, edge, intersections, QLineF::BoundedIntersection);
+        }
+        for (const auto& currP: intersections)
+        {
+            buff.append(currP);
+        }
+        buff = sortPolygonClockwise(buff);
+        resCells.append(biggerThanPoly);
+    }
+    // решение для 180 градусов обратно все k -> i а i -> k
+    buff.clear(); intersections.clear();
+    for(int i = 0; i < copy.count() - 1; ++i)
+    {
+        int k = i + 1;
+        QLineF firstParRevers = copy[i][OrientedLine::ParallelSweepR];
+        QLineF secParRevers = copy[k][OrientedLine::ParallelSweepL];
+        QPolygonF biggerThanPolyRev;
+        biggerThanPolyRev   << copy[i][OrientedLine::ParallelSweepR].p1()
+                            << copy[k][OrientedLine::ParallelSweepL].p1()
+                            << copy[k][OrientedLine::ParallelSweepL].p2()
+                            << copy[i][OrientedLine::ParallelSweepR].p2();
+        if(isPolyInClockwiseMannerRot(biggerThanPolyRev.data(), biggerThanPolyRev.count()))
+            break;
+        for (int j = 0; j < polygon.size(); ++j) {
+            int w = (j + 1) % polygon.size(); // следующий и замыкание
+            edge = QLineF(polygon[j], polygon[w]);
+            if(biggerThanPolyRev.containsPoint(polygon[j], Qt::WindingFill)){ // containsPoint QPolygonF нужно усиливать для точек на краю
+                buff.append(polygon[j]);
+            }
+            intersectionListFormimgRoutine(firstParRevers, edge, intersections, QLineF::BoundedIntersection);
+            intersectionListFormimgRoutine(secParRevers, edge, intersections, QLineF::BoundedIntersection);
+        }
+        for (const auto& currP: intersections)
+        {
+            buff.append(currP);
+        }
+        buff = sortPolygonClockwise(buff);
+        resCells.append(biggerThanPolyRev);
+    }
+    // ------------ решение для зон с U и D ----------------
+    for(int i = 0; i < mapOriendtedHoleRectLines.count(); ++i)
+    {
+        readyPolyDown[i] = sortPolygonClockwise(readyPolyDown[i]);
+        readyPolyUp[i] = sortPolygonClockwise(readyPolyUp[i]);
+        resCells.append(readyPolyDown[i]);
+        resCells.append(readyPolyUp[i]);
+    }
 
     return resCells;
 }
@@ -725,17 +921,24 @@ bool Decomposer::isPointOnLineF(const QPointF& p, const QLineF& line){
     return isEq;
 }
 
-double Decomposer::lineEquationKoeff(const QLineF& inLine){
+double Decomposer::lineEquationKoeff(const QPointF& p1, const QPointF& p2){
     double res;
-    res = ( inLine.p2().x() - inLine.p1().x() ) / ( inLine.p2().y() + inLine.p1().y() );
+    res = (p2.x() - p1.x()) / (p2.y() + p1.y());
     return res;
 }
 
 //проверка на направление вращения полигона true - clockwise; false - counter-clockwise
-bool Decomposer::isPolyInClockwiseMannerRot(const QList<QLineF>& polygonPathArray){
+bool Decomposer::isPolyInClockwiseMannerRot(const QPointF* polygonPoints, uint size){
+    if (size < 3) {
+        // Для полигона нужно минимум 3 точки
+        return false;
+    }
+
     double sum = 0;
-    for (const QLineF& curr : polygonPathArray){
-        sum += lineEquationKoeff(curr);
+    for (int i = 0; i < size; i++){
+        const QPointF& p1 = polygonPoints[i];
+        const QPointF& p2 = polygonPoints[(i + 1) % size];
+        sum += lineEquationKoeff(p1, p2);
     }
     bool res = sum > 0;
     return res;
