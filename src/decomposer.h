@@ -127,16 +127,19 @@ private:
     QList<QPolygonF> boustrophedonDecomposition_compact(const QPolygonF& polygon, const QList<QPolygonF>& holes,
                                                         const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
                                                         double sweepAngle);
-    void upDownBorderFormingRoutineNewMannerJustLine(const QMap<OrientedLine, QLineF>& inMap,
-                                                    const QPolygonF& hole,
-                                                    QPolygonF& returnUp,
-                                                    QPolygonF& returnDown);
     void upDownBorderFormingRoutineNewMannerReadyPoly(const QMap<OrientedLine, QLineF>& inMap,
+                                                      const QPolygonF& hole,
+                                                      QPolygonF& returnUp,
+                                                      QPolygonF& returnDown);
+    void lineHoleUpDownBorderFormingRoutineNewManner(const QMap<OrientedLine, QLineF>& inMap,
                                                      const QPolygonF& hole,
-                                                     QLineF& returnUp,
-                                                     QLineF& returnDown);
+                                                    QPolygonF& returnUpPoly,
+                                                    QPolygonF& returnDownPoly,
+                                                     QList<QPointF>& returnUpL,
+                                                     QList<QPointF>& returnDownL);
 
     // Утилиты
+    QLineF extendLineBothWays(const QLineF& line, qreal delta);
     QLineF findLineBetweenLines(const QLineF& parall1, const QLineF& parall2, const QPointF& coord);
     template <typename T>
     T rotationStruct(const T& v, double sweepAngle);
