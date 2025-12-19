@@ -12,6 +12,8 @@
 #include <QPointF>
 #include <QLineF>
 
+#include "path_generator.h"
+
 class Decomposer : public QObject
 {
     Q_OBJECT
@@ -195,6 +197,7 @@ private:
     QList<QPolygonF> m_orientedHoleRects;
     QList<QMap<OrientedLine, QLineF>> m_mapOriendtedHoleRectLines; // переменная с информацией какая из ограничивающего holes фигуры паралельна галсу или нет
     enum class BCD_levels;
+    PathGenerator transects;
 
     // Предопределенные полигоны
     void createDefaultPolygon();
