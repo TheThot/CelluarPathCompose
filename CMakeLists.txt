@@ -7,6 +7,12 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+if(MSVC)
+    add_definitions(-D_USE_MATH_DEFINES)
+else()
+    add_definitions(-D_USE_MATH_DEFINES)  # Для MinGW
+endif()
+
 set(PROG_INCLUDE    ${CMAKE_CURRENT_SOURCE_DIR}/src
                     ${Qt5Widgets_INCLUDE_DIRS}
                     ${QtQml_INCLUDE_DIRS})

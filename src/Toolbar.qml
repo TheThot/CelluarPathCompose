@@ -15,6 +15,7 @@ Rectangle {
     property alias sweepAngle: angleSlider.value
     property alias showDecomposition: showDecompositionCheck.checked
     property alias showOrientedRect: showOrientedRectCheck.checked
+    property alias showPathCoverage: showPathCoverageCheck.checked
 
     function getRandom(previousValue) {
         return Math.floor(previousValue + Math.random() * 90) % 360;
@@ -171,6 +172,18 @@ Rectangle {
                     color: "white"
                     font.pixelSize: 14
                     leftPadding: showOrientedRectCheck.indicator.width + 10
+                }
+            }
+
+            CheckBox {
+                id: showPathCoverageCheck
+                checked: true
+                text: "Show Path Coverage"
+                contentItem: Text {
+                    text: showOrientedRectCheck.text
+                    color: "white"
+                    font.pixelSize: 14
+                    leftPadding: showPathCoverageCheck.indicator.width + 10
                 }
             }
         }

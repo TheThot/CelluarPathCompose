@@ -1,7 +1,6 @@
 //
 // Created by Admin on 08.12.2025.
 //
-#define _USE_MATH_DEFINES
 #include "decomposer.h"
 #include <cmath>
 #include <algorithm>
@@ -19,6 +18,7 @@ Decomposer::Decomposer(QObject *parent)
 //    createDefaultPolygon();
     createPolygonWithHoles();
     updateDecomposition();
+    transects = PathGenerator(m_originalPolygon, m_orientedRect, 10, m_sweepAngle);
 }
 
 QVariantList Decomposer::originalPolygon() const {
