@@ -6,8 +6,9 @@
 #define TRYCELLUARPATHCOMPOSE_UTILS_H
 
 #include <cmath>
-#include <QObject>
 #include <QPointF>
+#include <QPolygonF>
+#include <QLineF>
 
 namespace baseFunc {
     /*class Utilz : public QObject {
@@ -15,7 +16,7 @@ namespace baseFunc {
     public:
 
     };*/
-    void intersectLinesWithPolygon(const QList<QLineF>& lineList, const QPolygonF& polygon, QList<QLineF>& resultLines)
+    static void intersectLinesWithPolygon(const QList<QLineF>& lineList, const QPolygonF& polygon, QList<QLineF>& resultLines)
     {
         resultLines.clear();
 
@@ -84,7 +85,7 @@ namespace baseFunc {
         }
     }
 
-    QPointF rotatePoint(const QPointF& point, const QPointF& origin, double angle)
+    static QPointF rotatePoint(const QPointF& point, const QPointF& origin, double angle)
     {
         QPointF rotated;
 
@@ -95,5 +96,177 @@ namespace baseFunc {
 
         return rotated;
     }
+
+    /*static void intersectionListFormimgRoutine2(const QLineF& l1, const QLineF& l2, QList<QPointF>& intersections_list, QLineF::IntersectionType foundingType)
+    {
+        // на случай QLineF::UnboundedIntersection ограничиваем возможные пересечения за пределами области определения линий самым большим размером = max(SurvPolyBoundRect)
+        QPointF resIntersection{0,0};
+        QLineF::IntersectionType flag = l1.intersects(l2, &resIntersection);
+
+
+        if (flag == foundingType)
+            if (!intersections_list.contains(resIntersection))
+                intersections_list.append(resIntersection);
+    }*/
+
+    static void intersectionListFormimgRoutine(const QLineF& l1, const QLineF& l2, QList<QPointF>& intersections_list, QLineF::IntersectionType foundingType,
+                                        uint64_t maxBoundSurvPolyRad = 1e3)
+    {
+        // на случай QLineF::UnboundedIntersection ограничиваем возможные пересечения за пределами области определения линий самым большим размером = max(SurvPolyBoundRect)
+        QPointF resIntersection{0,0};
+        QLineF::IntersectionType flag = l1.intersects(l2, &resIntersection);
+
+        if(flag != 0) // берём l2 в условие потому что это линия должна быть со структуры полигона with holes
+            if(static_cast<uint64_t>(QLineF(l2.p1(), resIntersection).length()) > maxBoundSurvPolyRad)
+                return;
+
+        if (flag == foundingType)
+            if (!intersections_list.contains(resIntersection))
+                intersections_list.append(resIntersection);
+    }
+
+
+    template <typename T>
+    static std::vector<int> sort_indexes(const QList<T> &v) {
+
+        // initialize original index locations
+        std::vector<int> idx(v.size());
+        std::iota(idx.begin(), idx.end(), 0);
+
+        std::sort(idx.begin(), idx.end(),
+                  [&v](int i1, int i2) {return v[i1] < v[i2];});
+
+        return idx;
+    }
+
+    static QPolygonF sortPolygonClockwise(QPolygonF polygon) {
+        if (polygon.size() < 3) return polygon;
+
+        // Находим самую нижнюю-левую точку (опорную точку)
+        QPointF pivot = polygon[0];
+        for (const QPointF& p : polygon) {
+            if (p.y() < pivot.y() ||
+                (std::abs(p.y() - pivot.y()) < 1e-9 && p.x() < pivot.x())) {
+                pivot = p;
+                }
+        }
+
+        // Сортируем по полярному углу относительно опорной точки
+        std::sort(polygon.begin(), polygon.end(),
+                  [pivot](const QPointF& a, const QPointF& b) {
+                      if (a == pivot) return true;
+                      if (b == pivot) return false;
+
+                      double angleA = std::atan2(a.y() - pivot.y(), a.x() - pivot.x());
+                      double angleB = std::atan2(b.y() - pivot.y(), b.x() - pivot.x());
+
+                      if (std::abs(angleA - angleB) < 1e-9) {
+                          // Для коллинеарных точек сортируем по расстоянию
+                          double distA = std::hypot(a.x() - pivot.x(), a.y() - pivot.y());
+                          double distB = std::hypot(b.x() - pivot.x(), b.y() - pivot.y());
+                          return distA < distB;
+                      }
+
+                      return angleA < angleB;
+                  });
+
+        return polygon;
+    }
+
+    static double lineEquationKoeff(const QPointF& p1, const QPointF& p2){
+        double res;
+        res = (p2.x() - p1.x()) / (p2.y() + p1.y());
+        return res;
+    }
+
+    //проверка на направление вращения полигона true - clockwise; false - counter-clockwise
+    static bool isPolyInClockwiseMannerRot(const QPointF* polygonPoints, uint size){
+        if (size < 3) {
+            // Для полигона нужно минимум 3 точки
+            return false;
+        }
+
+        double sum = 0;
+        for (int i = 0; i < size; i++){
+            const QPointF& p1 = polygonPoints[i];
+            const QPointF& p2 = polygonPoints[(i + 1) % size];
+            sum += lineEquationKoeff(p1, p2);
+        }
+        bool res = sum > 0;
+        return res;
+    }
+
+    //проверка лежит ли точка на прямой
+    static bool isPointOnLineF(const QPointF& p, const QLineF& line){
+        double len = line.length(); //исходная длина прямой
+        QLineF lineP1(line.p1(), p), lineP2(p, line.p2());
+        double len1, len2;
+        len1 = lineP1.length();
+        len2 = lineP2.length();
+        double sum = len1 + len2;
+        bool isEq = std::abs(len - sum) < 0.1;
+        //в случае если сумма len1 + len2 == len значит точка на прямой
+        return isEq;
+    }
+
+    /**
+     * @brief Пролонгирует линию в обе стороны на заданное расстояние
+     * @param line Исходная линия
+     * @param delta Расстояние для удлинения в каждую сторону
+     * @return Пролонгированная линия
+     */
+    static QLineF extendLineBothWays(const QLineF& line, qreal delta)
+    {
+        // Получаем начальную и конечную точки линии
+        QPointF p1 = line.p1();
+        QPointF p2 = line.p2();
+
+        // Вычисляем длину и угол линии
+        qreal length = line.length();
+        qreal angle = line.angle() * M_PI / 180.0; // Конвертируем в радианы
+
+        if (qFuzzyCompare(length, 0)) {
+            // Если линия является точкой, возвращаем её без изменений
+            return line;
+        }
+
+        // Вычисляем коэффициенты для направления линии
+        qreal dx = (p2.x() - p1.x()) / length;
+        qreal dy = (p2.y() - p1.y()) / length;
+
+        // Удлиняем линию в обе стороны
+        QPointF newP1 = p1 - QPointF(dx * delta, dy * delta);
+        QPointF newP2 = p2 + QPointF(dx * delta, dy * delta);
+
+        return QLineF{newP1, newP2};
+    }
+
+    static QList<double> distanceToPointRoutine(const QPointF& point, const QList<QPointF>& intersections_list)
+    {
+        QList<double> result;
+        for(int i = 0; i < intersections_list.count(); ++i)
+            result.append(QLineF(point, intersections_list[i]).length());
+        return result;
+    }
+
+    static QLineF findLineBetweenLines(const QLineF& parall1, const QLineF& parall2, const QPointF& coord)
+    {
+        // Получаем нормальный единичный вектор
+        QLineF normal = parall1.normalVector();
+        QPointF unitNormal = normal.p2() - normal.p1();
+
+        // Создаем линию через точку coord в перпендикулярном направлении
+        qreal length = 1e3;
+
+        auto approxToPrecise = QLineF{coord - unitNormal * length, coord + unitNormal * length};
+        QPointF preciseP;
+        parall1.intersects(approxToPrecise, &preciseP);
+        approxToPrecise.setP1(preciseP);
+        parall2.intersects(approxToPrecise, &preciseP);
+        approxToPrecise.setP2(preciseP);
+        return approxToPrecise;
+
+    }
+
 }
 #endif //TRYCELLUARPATHCOMPOSE_UTILS_H

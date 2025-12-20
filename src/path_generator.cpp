@@ -1,9 +1,9 @@
 //
 // Created by Admin on 19.12.2025.
 //
+#include <iostream>
 #include "path_generator.h"
 
-#include <utility>
 #include "utils.h"
 
 using namespace baseFunc;
@@ -62,27 +62,68 @@ PathGenerator::~PathGenerator()
     _path.clear();
 }
 
+QVariantMap PathGenerator::oneLoopTraj(const QLineF& in) const
+{
+    QVariantMap lineMap;
+
+    // Точка p1
+    QVariantMap point1Map;
+    point1Map["x"] = in.p1().x();
+    point1Map["y"] = in.p1().y();
+    lineMap["p1"] = point1Map;
+
+    // Точка p2
+    QVariantMap point2Map;
+    point2Map["x"] = in.p2().x();
+    point2Map["y"] = in.p2().y();
+    lineMap["p2"] = point2Map;
+
+    return lineMap;
+}
+
+/*
+QVariantMap PathGenerator::twoLoopTraj(const QLineF& in) const
+{
+    QVariantList result;
+    QVariantList row;
+
+    // комбинируем в одном QVariantList все остальные QVariantList'ы
+    for (const auto &segments : in) {
+        for(const auto &segment : segments) {
+            QVariantMap pointMap;
+            pointMap["x"] = p.x();
+            pointMap["y"] = p.y();
+            row.append(pointMap);
+        }
+        result.append(QVariant::fromValue(row));
+        row.clear();
+    }
+}*/
+
 QVariantList PathGenerator::pathTraj() const
 {
     QVariantList pathTraj;
 
-    for (const auto& path : _path)
-    {
-        QVariantMap lineMap;
+    // определяем какой у нас активен режим ? от этого будет зависеть возвращаемое в qml значение
+    if (!_isHolesActive)
+        for (const auto& path : _path)
+        {
+            auto lineMap = oneLoopTraj(path);
+            pathTraj.append(lineMap);
+        }
+    else {
 
-        // Точка p1
-        QVariantMap point1Map;
-        point1Map["x"] = path.p1().x();
-        point1Map["y"] = path.p1().y();
-        lineMap["p1"] = point1Map;
-
-        // Точка p2
-        QVariantMap point2Map;
-        point2Map["x"] = path.p2().x();
-        point2Map["y"] = path.p2().y();
-        lineMap["p2"] = point2Map;
-
-        pathTraj.append(lineMap);
+        QVariantList row;
+        for (const auto &lineS: _pathRespectHoles) {
+            for (const auto &p: lineS) {
+                QVariantMap pointMap;
+                pointMap["x"] = p.x();
+                pointMap["y"] = p.y();
+                row.append(pointMap);
+            }
+            pathTraj.append(QVariant::fromValue(row));
+            row.clear();
+        }
     }
 
     return pathTraj;
@@ -95,6 +136,9 @@ void PathGenerator::setGridAngle(double in)
 
 void PathGenerator::pathUpdation()
 {
+    _path.clear();
+    _pathRespectHoles.clear();
+
     _initNonRespectInnerHoles();
 
     if(_holes != nullptr)
@@ -104,6 +148,7 @@ void PathGenerator::pathUpdation()
 void PathGenerator::setPolyHolesList(const QList<QPolygonF>& in)
 {
     _holes = &in;
+    _isHolesActive = !_isHolesActive;
 }
 
 void PathGenerator::setSurvPoly(const QPolygonF& in)
@@ -118,5 +163,38 @@ void PathGenerator::setPolyBoundary(const QPolygonF& in)
 
 void PathGenerator::_initLinesRespectHoles()
 {
+    if(_holes == nullptr)
+        return;
 
+    QLineF holeL;
+    for (const auto& currTransect : _path)
+    {
+        QList<QPointF> res;
+        QList<QPointF> buff;
+        QList<double> dist;
+        buff.append(currTransect.p1());
+        for (const auto& currHolePoly: *_holes)
+        {
+            for (int i = 0; i < currHolePoly.count(); ++i)
+            {
+                int k = (i + 1) % currHolePoly.count();
+                holeL = QLineF(currHolePoly[i], currHolePoly[k]);
+                //res - все пересечения линии с любыми _holes
+                intersectionListFormimgRoutine(currTransect, holeL, res, QLineF::BoundedIntersection);
+            }
+        }
+        // сразу buff пересечений класть в _pathRespectHoles нельзя
+        // сперва отсортировать по расстояниям
+        for(const auto& oneIntersection:res){
+            holeL = QLineF(currTransect.p1(), oneIntersection);
+            dist.append(holeL.length());
+        }
+        auto idx = sort_indexes<double>(dist);
+        for(const auto& currI:idx){
+            buff.append(res[currI]);
+        }
+        buff.append(currTransect.p2());
+//        std::cout << "[_initLinesRespectHoles] buff length is " << buff.count() << std::endl;
+        _pathRespectHoles.append(buff);
+    }
 }

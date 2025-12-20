@@ -2,12 +2,13 @@
 // Created by Admin on 08.12.2025.
 //
 #include "decomposer.h"
-#include <cmath>
+#include "utils.h"
 #include <algorithm>
 #include <iostream>
 #include <ostream>
 #include <vector>
 
+using namespace baseFunc;
 
 Decomposer::Decomposer(QObject *parent)
     : QObject(parent)
@@ -195,7 +196,7 @@ void Decomposer::updateDecomposition() {
 }
 
 void Decomposer::resetPolygon() {
-    createDefaultPolygon();
+    createPolygonWithHoles();
     emit originalPolygonChanged();
     updateDecomposition();
 }
@@ -248,7 +249,7 @@ std::vector<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& pol
             edge = QLineF(rotatedPolygon[j], rotatedPolygon[k]);
 
             // Проверяем пересечение
-            intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection);
+            intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
         }
 
         // Сортируем пересечения
@@ -289,48 +290,6 @@ std::vector<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& pol
     }
 
     return cells;
-}
-
-void Decomposer::intersectionListFormimgRoutine(const QLineF& l1, const QLineF& l2, QList<QPointF>& intersections_list, QLineF::IntersectionType foundingType)
-{
-    // на случай QLineF::UnboundedIntersection ограничиваем возможные пересечения за пределами области определения линий самым большим размером = max(SurvPolyBoundRect)
-    QPointF resIntersection{0,0};
-    QLineF::IntersectionType flag = l1.intersects(l2, &resIntersection);
-
-    if(flag != 0) // берём l2 в условие потому что это линия должна быть со структуры полигона with holes
-        if(static_cast<uint64_t>(QLineF(l2.p1(), resIntersection).length()) > maxBoundSurvPolyRad)
-            return;
-
-    if (flag == foundingType)
-        if (!intersections_list.contains(resIntersection))
-            intersections_list.append(resIntersection);
-}
-
-QList<double> Decomposer::distanceToPointRoutine(const QPointF& point, const QList<QPointF>& intersections_list)
-{
-    QList<double> result;
-    for(int i = 0; i < intersections_list.count(); ++i)
-        result.append(QLineF(point, intersections_list[i]).length());
-    return result;
-}
-
-QLineF Decomposer::findLineBetweenLines(const QLineF& parall1, const QLineF& parall2, const QPointF& coord)
-{
-    // Получаем нормальный единичный вектор
-    QLineF normal = parall1.normalVector();
-    QPointF unitNormal = normal.p2() - normal.p1();
-
-    // Создаем линию через точку coord в перпендикулярном направлении
-    qreal length = 1e3;
-
-    auto approxToPrecise = QLineF{coord - unitNormal * length, coord + unitNormal * length};
-    QPointF preciseP;
-    parall1.intersects(approxToPrecise, &preciseP);
-    approxToPrecise.setP1(preciseP);
-    parall2.intersects(approxToPrecise, &preciseP);
-    approxToPrecise.setP2(preciseP);
-    return approxToPrecise;
-
 }
 
 void Decomposer::upDownBorderFormingRoutineNewMannerReadyPoly(const QMap<OrientedLine, QLineF>& inMap,
@@ -393,39 +352,6 @@ void Decomposer::lineHoleUpDownBorderFormingRoutineNewManner(const QMap<Oriented
     }
 }
 
-/**
- * @brief Пролонгирует линию в обе стороны на заданное расстояние
- * @param line Исходная линия
- * @param delta Расстояние для удлинения в каждую сторону
- * @return Пролонгированная линия
- */
-QLineF Decomposer::extendLineBothWays(const QLineF& line, qreal delta)
-{
-    // Получаем начальную и конечную точки линии
-    QPointF p1 = line.p1();
-    QPointF p2 = line.p2();
-
-    // Вычисляем длину и угол линии
-    qreal length = line.length();
-    qreal angle = line.angle() * M_PI / 180.0; // Конвертируем в радианы
-
-    if (qFuzzyCompare(length, 0)) {
-        // Если линия является точкой, возвращаем её без изменений
-        return line;
-    }
-
-    // Вычисляем коэффициенты для направления линии
-    qreal dx = (p2.x() - p1.x()) / length;
-    qreal dy = (p2.y() - p1.y()) / length;
-
-    // Удлиняем линию в обе стороны
-    QPointF newP1 = p1 - QPointF(dx * delta, dy * delta);
-    QPointF newP2 = p2 + QPointF(dx * delta, dy * delta);
-
-    return QLineF{newP1, newP2};
-}
-
-
 void Decomposer::newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap,
                                          const QPolygonF& hole,
                                          QLineF& returnUp,
@@ -454,10 +380,10 @@ void Decomposer::newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap
         QLineF currHoleLine = QLineF(hole[i], hole[k]);
         currHoleLine = extendLineBothWays(currHoleLine, 10);
         // для надёжности оба типа внутреннее и внешнее пересечения
-//        intersectionListFormimgRoutine(currParallelOrientLineL, currHoleLine, intersectionsL_list, QLineF::UnboundedIntersection);
-        intersectionListFormimgRoutine(currParallelOrientLineL, currHoleLine, intersectionsL_list, QLineF::BoundedIntersection);
-//        intersectionListFormimgRoutine(currParallelOrientLineR, currHoleLine, intersectionsR_list, QLineF::UnboundedIntersection);
-        intersectionListFormimgRoutine(currParallelOrientLineR, currHoleLine, intersectionsR_list, QLineF::BoundedIntersection);
+//        intersectionListFormimgRoutine(currParallelOrientLineL, currHoleLine, intersectionsL_list, QLineF::UnboundedIntersection, maxBoundSurvPolyRad);
+        intersectionListFormimgRoutine(currParallelOrientLineL, currHoleLine, intersectionsL_list, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+//        intersectionListFormimgRoutine(currParallelOrientLineR, currHoleLine, intersectionsR_list, QLineF::UnboundedIntersection, maxBoundSurvPolyRad);
+        intersectionListFormimgRoutine(currParallelOrientLineR, currHoleLine, intersectionsR_list, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
     }
 //    std::cout << "Count L intersections " << intersectionsL_list.count() << std::endl;
 //    std::cout << "Count R intersections " << intersectionsR_list.count() << std::endl;
@@ -487,8 +413,8 @@ void Decomposer::newParallFormingRoutine(const QMap<OrientedLine, QLineF>& inMap
     {
         int k = (i + 1) % survPolyBound.count();
         auto buffLine = QLineF(survPolyBound[i], survPolyBound[k]);
-        intersectionListFormimgRoutine(parallelL, buffLine, resIntersectionsL, QLineF::UnboundedIntersection);
-        intersectionListFormimgRoutine(parallelR, buffLine, resIntersectionsR, QLineF::UnboundedIntersection);
+        intersectionListFormimgRoutine(parallelL, buffLine, resIntersectionsL, QLineF::UnboundedIntersection, maxBoundSurvPolyRad);
+        intersectionListFormimgRoutine(parallelR, buffLine, resIntersectionsR, QLineF::UnboundedIntersection, maxBoundSurvPolyRad);
     }
     returnL = QLineF(resIntersectionsL[0], resIntersectionsL[1]);
     returnR = QLineF(resIntersectionsR[0], resIntersectionsR[1]);
@@ -632,7 +558,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
             buff.append(rotatedPolygon[j]);
         }
         edge = QLineF(rotatedPolygon[j], rotatedPolygon[k]);
-        intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection);
+        intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
     }
     buff.append(intersections[0]); buff.append(intersections[1]);
     buff = rotationStruct<QPolygonF>(buff, -sweepAngle); // поворачиваем обратно точки декомпозиции
@@ -649,7 +575,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
             buff.append(rotatedPolygon[j]);
         }
         edge = QLineF(rotatedPolygon[j], rotatedPolygon[k]);
-        intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection);
+        intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
     }
     buff.append(intersections[0]); buff.append(intersections[1]);
     buff = rotationStruct<QPolygonF>(buff, -sweepAngle); // поворачиваем обратно точки декомпозиции
@@ -677,8 +603,8 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
             if(biggerThanPoly.containsPoint(polygon[j], Qt::WindingFill)){ // containsPoint QPolygonF нужно усиливать для точек на краю
                 buff.append(polygon[j]);
             }
-            intersectionListFormimgRoutine(firstPar, edge, intersections, QLineF::BoundedIntersection);
-            intersectionListFormimgRoutine(secPar, edge, intersections, QLineF::BoundedIntersection);
+            intersectionListFormimgRoutine(firstPar, edge, intersections, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+            intersectionListFormimgRoutine(secPar, edge, intersections, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
         }
         for (const auto& currP: intersections)
         {
@@ -708,8 +634,8 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
             if(biggerThanPolyRev.containsPoint(polygon[j], Qt::WindingFill)){ // containsPoint QPolygonF нужно усиливать для точек на краю
                 buff.append(polygon[j]);
             }
-            intersectionListFormimgRoutine(firstParRevers, edge, intersections, QLineF::BoundedIntersection);
-            intersectionListFormimgRoutine(secParRevers, edge, intersections, QLineF::BoundedIntersection);
+            intersectionListFormimgRoutine(firstParRevers, edge, intersections, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+            intersectionListFormimgRoutine(secParRevers, edge, intersections, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
         }
         for (const auto& currP: intersections)
         {
@@ -956,76 +882,6 @@ void Decomposer::createPolygonWithHoles() {
             << QPointF(360.36, 325.00)
             << QPointF(325.00, 289.64);
     m_holes.append(secHole);
-}
-
-//проверка лежит ли точка на прямой
-bool Decomposer::isPointOnLineF(const QPointF& p, const QLineF& line){
-    double len = line.length(); //исходная длина прямой
-    QLineF lineP1(line.p1(), p), lineP2(p, line.p2());
-    double len1, len2;
-    len1 = lineP1.length();
-    len2 = lineP2.length();
-    double sum = len1 + len2;
-    bool isEq = std::abs(len - sum) < 0.1;
-    //в случае если сумма len1 + len2 == len значит точка на прямой
-    return isEq;
-}
-
-double Decomposer::lineEquationKoeff(const QPointF& p1, const QPointF& p2){
-    double res;
-    res = (p2.x() - p1.x()) / (p2.y() + p1.y());
-    return res;
-}
-
-//проверка на направление вращения полигона true - clockwise; false - counter-clockwise
-bool Decomposer::isPolyInClockwiseMannerRot(const QPointF* polygonPoints, uint size){
-    if (size < 3) {
-        // Для полигона нужно минимум 3 точки
-        return false;
-    }
-
-    double sum = 0;
-    for (int i = 0; i < size; i++){
-        const QPointF& p1 = polygonPoints[i];
-        const QPointF& p2 = polygonPoints[(i + 1) % size];
-        sum += lineEquationKoeff(p1, p2);
-    }
-    bool res = sum > 0;
-    return res;
-}
-
-QPolygonF Decomposer::sortPolygonClockwise(QPolygonF polygon) {
-    if (polygon.size() < 3) return polygon;
-
-    // Находим самую нижнюю-левую точку (опорную точку)
-    QPointF pivot = polygon[0];
-    for (const QPointF& p : polygon) {
-        if (p.y() < pivot.y() ||
-            (std::abs(p.y() - pivot.y()) < 1e-9 && p.x() < pivot.x())) {
-            pivot = p;
-        }
-    }
-
-    // Сортируем по полярному углу относительно опорной точки
-    std::sort(polygon.begin(), polygon.end(),
-              [pivot](const QPointF& a, const QPointF& b) {
-                  if (a == pivot) return true;
-                  if (b == pivot) return false;
-
-                  double angleA = std::atan2(a.y() - pivot.y(), a.x() - pivot.x());
-                  double angleB = std::atan2(b.y() - pivot.y(), b.x() - pivot.x());
-
-                  if (std::abs(angleA - angleB) < 1e-9) {
-                      // Для коллинеарных точек сортируем по расстоянию
-                      double distA = std::hypot(a.x() - pivot.x(), a.y() - pivot.y());
-                      double distB = std::hypot(b.x() - pivot.x(), b.y() - pivot.y());
-                      return distA < distB;
-                  }
-
-                  return angleA < angleB;
-              });
-
-    return polygon;
 }
 
 bool Decomposer::showPathCoverage() const {

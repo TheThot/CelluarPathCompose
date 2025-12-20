@@ -5,8 +5,6 @@
 #ifndef TRYCELLUARPATHCOMPOSE_PATH_GENERATOR_H
 #define TRYCELLUARPATHCOMPOSE_PATH_GENERATOR_H
 
-#include <memory>
-#include <QObject>
 #include <QPolygonF>
 #include <QLineF>
 #include <QVariantList>
@@ -42,13 +40,16 @@ private:
 
     void _initNonRespectInnerHoles();
     void _initLinesRespectHoles();
+    QVariantMap oneLoopTraj(const QLineF& in) const;
+    // QVariantMap twoLoopTraj(const QLineF& in) const;
 
+    bool            _isHolesActive = false;
     QList<QLineF>   _path;
     double          _gridSpace;
     double          _gridAngle;
-    QList<QList<QLineF>>   _pathRespectHoles;
+    QList<QList<QPointF>>   _pathRespectHoles;
 
-    const QList<QPolygonF>* _holes;
+    const QList<QPolygonF>* _holes = nullptr;
     const QPolygonF* _survPolygon = nullptr;
     const QPolygonF* _polyBoundary = nullptr;
 };

@@ -131,22 +131,31 @@ Canvas {
 
     function drawLines(ctx, lines, color){
         ctx.save()
-        ctx.setLineDash([])  // Явно сбрасываем пунктир
+        // ctx.setLineDash([])  // Явно сбрасываем пунктир
+        if(!showPolyWithHoles) {
+            for (var line of lines) {
+                ctx.beginPath()
+                ctx.moveTo(line.p1.x, line.p1.y)  // Начало линии
+                ctx.lineTo(line.p2.x, line.p2.y)  // Конец линии
+                ctx.strokeStyle = color
+                ctx.lineWidth = 4
+                ctx.stroke()
+            }
+        }else{
+            for (var oneDivLine of lines) {
+                for(var i = 0; i < oneDivLine.length-1; i+=2){
+                    ctx.beginPath()
+                    ctx.moveTo(oneDivLine[i].x, oneDivLine[i].y)  // Начало линии
+                    ctx.lineTo(oneDivLine[i+1].x, oneDivLine[i+1].y)  // Конец линии
+                    ctx.strokeStyle = color
+                    ctx.lineWidth = 4
+                    ctx.stroke()
+                }
 
-        // console.log("Lines size is ", lines.length);
-        for(var line of lines){
-            // console.log("Curr line p1 is x ", line.p1.x, " y ", line.p1.y);
-            // console.log("Curr line p2 is x ", line.p2.x, " y ", line.p2.y);
-
-            ctx.beginPath()
-            ctx.moveTo(line.p1.x, line.p1.y)  // Начало линии
-            ctx.lineTo(line.p2.x, line.p2.y)  // Конец линии (был moveTo)
-            ctx.strokeStyle = color
-            ctx.lineWidth = 4
-            ctx.stroke()
+            }
         }
 
-        ctx.restore()  // Не забудьте восстановить состояние контекста
+        ctx.restore()  // восстановить состояние контекста
     }
 
     function drawSweepLine(ctx) {

@@ -5,14 +5,10 @@
 #ifndef DECOMPOSER_H
 #define DECOMPOSER_H
 
+#include "path_generator.h"
 #include <QObject>
-#include <QPolygonF>
-#include <QVariantList>
 #include <QVector>
 #include <QPointF>
-#include <QLineF>
-
-#include "path_generator.h"
 
 class Decomposer : public QObject
 {
@@ -97,19 +93,6 @@ signals:
     void showPathCoverageChanged();
 
 private:
-    template <typename T>
-    inline std::vector<int> sort_indexes(const QList<T> &v) {
-
-        // initialize original index locations
-        std::vector<int> idx(v.size());
-        std::iota(idx.begin(), idx.end(), 0);
-
-        std::sort(idx.begin(), idx.end(),
-                  [&v](int i1, int i2) {return v[i1] < v[i2];});
-
-        return idx;
-    }
-
     enum class OrientPointNames
     {
         LeftBottom = 0,     // [0] - лев ниж
@@ -147,8 +130,6 @@ private:
                                                      QList<QPointF>& returnDownL);
 
     // Утилиты
-    QLineF extendLineBothWays(const QLineF& line, qreal delta);
-    QLineF findLineBetweenLines(const QLineF& parall1, const QLineF& parall2, const QPointF& coord);
     template <typename T>
     T rotationStruct(const T& v, double sweepAngle);
     void newParallFormingRoutine(const QMap<OrientedLine, QLineF>& inMap,
@@ -162,15 +143,6 @@ private:
     QPointF rotatePoint(const QPointF& point, double angle);
     QPointF inverseRotatePoint(const QPointF& point, double angle);
     double computePolygonArea(const QPolygonF& polygon) const;
-    void intersectionListFormimgRoutine(const QLineF& l1, const QLineF& l2,
-                                        QList<QPointF>& intersections_list,
-                                        QLineF::IntersectionType foundingType);
-    QList<double> distanceToPointRoutine(const QPointF& point, const QList<QPointF>& intersections_list);
-    bool isPointOnLineF(const QPointF& p, const QLineF& line);
-    double lineEquationKoeff(const QPointF& p1, const QPointF& p2);
-    bool isPolyInClockwiseMannerRot(const QPointF* polygonPoints, uint size);
-    QPolygonF sortPolygonClockwise(QPolygonF polygon);
-
 
     template< typename Type > QVariantList configListVariantLists(Type in_array) const{
         QVariantList result;
