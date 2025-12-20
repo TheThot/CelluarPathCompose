@@ -788,32 +788,6 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
             int k = (i+1) % currHole.count();
             wholeLinesList.append(QLineF(currHole[i], currHole[k]));
         }
-    }
-
-    int numLine = 0;
-    QList<QMap<OrientedLine, QLineF>> copy;
-    QMap<OrientedLine, QLineF> empty = {};
-    copy.reserve(mapOriendtedHoleRectLines.count());
-    for (int i = 0; i < mapOriendtedHoleRectLines.count(); ++i) {
-        copy.append(empty);
-    }
-    for(int i = 0; i < mapOriendtedHoleRectLines.count(); ++i) //распаковываем по одной штук на каждую hole
-    {
-        //auto orntLn = static_cast<OrientedLine>(numLine); // OrientedLine
-        // 1. Организация данных в новую структуру схожую с mapOriendtedHoleRectLines,
-        // ParallelSweepL и ParallelSweepR в направлении галса берутся без изменения
-        copy[i][OrientedLine::ParallelSweepL] = mapOriendtedHoleRectLines[i][OrientedLine::ParallelSweepL];
-        copy[i][OrientedLine::ParallelSweepR] = mapOriendtedHoleRectLines[i][OrientedLine::ParallelSweepR];
-        // и формируется новые U и D границы
-        newBorderFormingRoutine(mapOriendtedHoleRectLines[i], holes[i],
-                                copy[i][OrientedLine::PerpendiclSweepU],
-                                copy[i][OrientedLine::PerpendiclSweepD]);
-
-        // 2. Пересечения для линий ParallelSweepL и ParallelSweepR из mapOriendtedHoleRectLines до всех возможных границ Polygon и Polygon Holes
-        // -> результат для каждой линии свой список
-
-        ++numLine; //?? это нужно ??
-
     }*/
 
     return resCells;

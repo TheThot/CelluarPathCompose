@@ -41,10 +41,12 @@ signals:
 private:
 
     void _initNonRespectInnerHoles();
+    void _initLinesRespectHoles();
 
     QList<QLineF>   _path;
     double          _gridSpace;
     double          _gridAngle;
+    QList<QList<QLineF>>   _pathRespectHoles;
 
     const QList<QPolygonF>* _holes;
     const QPolygonF* _survPolygon = nullptr;

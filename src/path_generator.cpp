@@ -96,6 +96,9 @@ void PathGenerator::setGridAngle(double in)
 void PathGenerator::pathUpdation()
 {
     _initNonRespectInnerHoles();
+
+    if(_holes != nullptr)
+        _initLinesRespectHoles();
 }
 
 void PathGenerator::setPolyHolesList(const QList<QPolygonF>& in)
@@ -111,4 +114,9 @@ void PathGenerator::setSurvPoly(const QPolygonF& in)
 void PathGenerator::setPolyBoundary(const QPolygonF& in)
 {
     _polyBoundary = &in;
+}
+
+void PathGenerator::_initLinesRespectHoles()
+{
+
 }
