@@ -177,10 +177,10 @@ Rectangle {
 
             CheckBox {
                 id: showPathCoverageCheck
-                checked: true
+                checked: false
                 text: "Show Path Coverage"
                 contentItem: Text {
-                    text: showOrientedRectCheck.text
+                    text: showPathCoverageCheck.text
                     color: "white"
                     font.pixelSize: 14
                     leftPadding: showPathCoverageCheck.indicator.width + 10

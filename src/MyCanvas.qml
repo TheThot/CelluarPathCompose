@@ -3,6 +3,7 @@ import QtQuick 2.15
 Canvas {
     id: _root
     property var decomposer
+    property var pathgenerator
     property bool showPolyWithHoles: false
     renderTarget: Canvas.FramebufferObject
     antialiasing: true
@@ -15,12 +16,17 @@ Canvas {
         var ctx = getContext("2d")
         ctx.reset()
         ctx.clearRect(0, 0, width, height)
+        ctx.setLineDash([])  // Глобальный сброс пунктира!
 
         ctx.save()
         ctx.translate(offsetX, offsetY)
         ctx.scale(scaleFactor, scaleFactor)
 
         drawSweepLine(ctx)
+
+        if (decomposer.showPathCoverage) {
+            drawTransects(ctx)
+        }
 
         if (decomposer.showDecomposition) {
             showPolyWithHoles ? drawBPDDecomposition(ctx) : drawDecomposition(ctx)
@@ -33,6 +39,12 @@ Canvas {
         showPolyWithHoles ? drawOriginalPolygonWithHoles(ctx) : drawOriginalPolygon(ctx)
 
         ctx.restore()
+    }
+
+    function drawTransects(ctx){
+        var lines = pathgenerator.pathTraj
+
+        drawLines(ctx, lines, "#101D6B")
     }
 
     function drawOriginalPolygon(ctx) {
@@ -115,7 +127,28 @@ Canvas {
         })
     }
 
+    function drawLines(ctx, lines, color){
+        ctx.save()
+        ctx.setLineDash([])  // Явно сбрасываем пунктир
+
+        // console.log("Lines size is ", lines.length);
+        for(var line of lines){
+            // console.log("Curr line p1 is x ", line.p1.x, " y ", line.p1.y);
+            // console.log("Curr line p2 is x ", line.p2.x, " y ", line.p2.y);
+
+            ctx.beginPath()
+            ctx.moveTo(line.p1.x, line.p1.y)  // Начало линии
+            ctx.lineTo(line.p2.x, line.p2.y)  // Конец линии (был moveTo)
+            ctx.strokeStyle = color
+            ctx.lineWidth = 4
+            ctx.stroke()
+        }
+
+        ctx.restore()  // Не забудьте восстановить состояние контекста
+    }
+
     function drawSweepLine(ctx) {
+
         var angle = decomposer.sweepAngle
         if (angle === 0) return
 
@@ -150,34 +183,40 @@ Canvas {
         ctx.fillText("Sweep Line: " + angle.toFixed(1) + "°",
             centerX + Math.cos(angle * Math.PI / 180) * 70,
             centerY - Math.sin(angle * Math.PI / 180) * 70)
+
     }
 
     // Helper functions
     function drawPolygon(ctx, points, strokeColor, fillColor, lineWidth, dashed = false) {
         if (!points || points.length < 3) return
 
-        ctx.beginPath()
-        ctx.moveTo(points[0].x, points[0].y)
+        ctx.save()  // Сохраняем состояние
 
-        for (var i = 1; i < points.length; i++) {
-            ctx.lineTo(points[i].x, points[i].y)
-        }
-        ctx.closePath()
+        try {
+            ctx.beginPath()
+            ctx.moveTo(points[0].x, points[0].y)
 
-        ctx.fillStyle = fillColor
-        ctx.strokeStyle = strokeColor
-        ctx.lineWidth = lineWidth
+            for (var i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y)
+            }
+            ctx.closePath()
 
-        if (dashed) {
-            ctx.setLineDash([5, 5])
-        }
+            ctx.fillStyle = fillColor
+            ctx.strokeStyle = strokeColor
+            ctx.lineWidth = lineWidth
 
-        ctx.fill()
-        ctx.stroke()
+            if (dashed) {
+                ctx.setLineDash([5, 5])
+            }
 
-        if (dashed) {
+            ctx.fill()
+            ctx.stroke()
+        } finally {
+            // Всегда сбрасываем пунктир и восстанавливаем состояние
             ctx.setLineDash([])
+            ctx.restore()
         }
+
     }
 
     function drawVertices(ctx, polygon, fillColor, strokeColor) {

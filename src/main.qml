@@ -3,7 +3,6 @@ import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import Decomposer 1.0
-import PathGenerator 1.0
 import "."
 
 Window {
@@ -16,14 +15,14 @@ Window {
 
     Decomposer {
         id: decomposer
-        sweepAngle: myToolbar.sweepAngle
-        showDecomposition: myToolbar.showDecomposition
-        showOrientedRect: myToolbar.showOrientedRect
-    }
 
-    PathGenerator{
-        id: pathgen
-        showPathCoverage: myToolbar.showPathCoverage
+        property var pathGen: transects
+
+        sweepAngle:         myToolbar.sweepAngle
+        showDecomposition:  myToolbar.showDecomposition
+        showOrientedRect:   myToolbar.showOrientedRect
+        showPathCoverage:   myToolbar.showPathCoverage
+
     }
 
     Toolbar {
@@ -49,6 +48,7 @@ Window {
             id: canvas
             anchors.fill: parent
             decomposer: decomposer
+            pathgenerator: decomposer.pathGen
             showPolyWithHoles: !myToolbar.buttonsVisibleProp
         }
 

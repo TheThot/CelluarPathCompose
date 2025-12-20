@@ -18,7 +18,12 @@ Decomposer::Decomposer(QObject *parent)
 //    createDefaultPolygon();
     createPolygonWithHoles();
     updateDecomposition();
-    transects = PathGenerator(m_originalPolygon, m_orientedRect, 10, m_sweepAngle);
+    _transects = new PathGenerator(m_originalPolygon, m_orientedRect, 10, m_sweepAngle, this);
+    connect(this, &Decomposer::sweepAngleChanged, _transects, &PathGenerator::pathUpdation);
+}
+
+PathGenerator* Decomposer::transects() const{
+    return _transects;
 }
 
 QVariantList Decomposer::originalPolygon() const {
@@ -118,6 +123,7 @@ void Decomposer::setSweepAngle(double angle) {
         return;
 
     m_sweepAngle = angle;
+    transects()->setGridAngle(m_sweepAngle);
     emit sweepAngleChanged();
     updateDecomposition();
 }
@@ -439,8 +445,8 @@ void Decomposer::newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap
 //        intersectionListFormimgRoutine(currParallelOrientLineR, currHoleLine, intersectionsR_list, QLineF::UnboundedIntersection);
         intersectionListFormimgRoutine(currParallelOrientLineR, currHoleLine, intersectionsR_list, QLineF::BoundedIntersection);
     }
-    std::cout << "Count L intersections " << intersectionsL_list.count() << std::endl;
-    std::cout << "Count R intersections " << intersectionsR_list.count() << std::endl;
+//    std::cout << "Count L intersections " << intersectionsL_list.count() << std::endl;
+//    std::cout << "Count R intersections " << intersectionsR_list.count() << std::endl;
     //пересечения определены, после вычисляем расстояния соотвественно до D и U заносим в массив и сортируем
     // финальные линии returnUp и returnDown формируем мин расстоянием соответсвенно
     disR_list = distanceToPointRoutine(orientRectOverHole[OrientPointNames::RightBottom], intersectionsR_list);
@@ -1034,3 +1040,14 @@ QPolygonF Decomposer::sortPolygonClockwise(QPolygonF polygon) {
     return polygon;
 }
 
+bool Decomposer::showPathCoverage() const {
+    return _isPathShow;
+}
+
+void Decomposer::setShowPathCoverage(bool in) {
+    if(_isPathShow == in)
+        return;
+
+    _isPathShow = in;
+    emit showPathCoverageChanged();
+}

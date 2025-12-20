@@ -27,12 +27,16 @@ class Decomposer : public QObject
     Q_PROPERTY(QVariantList test_2Darray READ test_2Darray WRITE setTest_2Darray)
     Q_PROPERTY(QVariantList holes_2Darray READ holes_2Darray NOTIFY holesPolygonsChanged)
     Q_PROPERTY(QVariantList orientedHoleRects READ orientedHoleRects NOTIFY orientedHoleRectsChanged)
+    Q_PROPERTY(PathGenerator* transects  READ transects  CONSTANT)
+    Q_PROPERTY(bool showPathCoverage READ showPathCoverage WRITE setShowPathCoverage NOTIFY showPathCoverageChanged)
 
 public:
 
     explicit Decomposer(QObject *parent = nullptr);
 
     // Основные свойства
+    bool         showPathCoverage() const;
+    PathGenerator* transects() const;
     QVariantList holes_2Darray() const;
     QVariantList originalPolygon() const;
     QVariantList decompositionCells() const;
@@ -61,6 +65,7 @@ public:
     }
 
     // Методы для вызова из QML
+    Q_INVOKABLE void setShowPathCoverage(bool in);
     Q_INVOKABLE void setOriginalPolygon(const QVariantList &polygon);
     Q_INVOKABLE void setSweepAngle(double angle);
     Q_INVOKABLE void setShowDecomposition(bool show);
@@ -89,6 +94,7 @@ signals:
     void showOrientedRectChanged();
     void holesPolygonsChanged();
     void orientedHoleRectsChanged();
+    void showPathCoverageChanged();
 
 private:
     template <typename T>
@@ -197,7 +203,8 @@ private:
     QList<QPolygonF> m_orientedHoleRects;
     QList<QMap<OrientedLine, QLineF>> m_mapOriendtedHoleRectLines; // переменная с информацией какая из ограничивающего holes фигуры паралельна галсу или нет
     enum class BCD_levels;
-    PathGenerator transects;
+    PathGenerator* _transects;
+    bool            _isPathShow;
 
     // Предопределенные полигоны
     void createDefaultPolygon();

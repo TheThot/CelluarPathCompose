@@ -2,14 +2,12 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include "src/decomposer.h"
-#include "src/path_generator.h"
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
 
     // Регистрируем C++ класс в QML
     qmlRegisterType<Decomposer>("Decomposer", 1, 0, "Decomposer");
-    qmlRegisterType<PathGenerator>("PathGenerator", 1, 0, "PathGenerator");
 
     QQmlApplicationEngine engine;
     engine.load(QUrl("qrc:/qml/main.qml"));
