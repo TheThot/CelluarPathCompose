@@ -22,7 +22,9 @@ Canvas {
         ctx.translate(offsetX, offsetY)
         ctx.scale(scaleFactor, scaleFactor)
 
-        drawSweepLine(ctx)
+        if(!decomposer.showPathCoverage){
+            drawSweepLine(ctx)
+        }
 
         if (decomposer.showPathCoverage) {
             drawTransects(ctx)
