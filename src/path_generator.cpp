@@ -2,6 +2,8 @@
 // Created by Admin on 19.12.2025.
 //
 #include "path_generator.h"
+
+#include <utility>
 #include "utils.h"
 
 using namespace baseFunc;
@@ -12,26 +14,27 @@ PathGenerator::PathGenerator(QObject* parent) :
 
 }
 
-PathGenerator::PathGenerator(QPolygonF& inPolygon, QPolygonF& inBoundaryPoly, double inStep, double inAngle, QObject *parent) :
+PathGenerator::PathGenerator(double inStep, double inAngle, QObject *parent) :
                             QObject(parent),
-                            _survPolygon(inPolygon),
-                            _polyBoundary(inBoundaryPoly),
                             _gridSpace(inStep),
                             _gridAngle(inAngle)
 {
-    _init();
+//    _initNonRespectInnerHoles();
 }
 
-void PathGenerator::_init()
+void PathGenerator::_initNonRespectInnerHoles()
 {
+
+    if(_survPolygon == nullptr)
+        return;
 
     // формируем полное покрытие полигона
     QPointF center;
-    for(const auto& currP: _survPolygon){
+    for(const auto& currP: *_survPolygon){
         center += currP;
     }
-    center /= _survPolygon.size();
-    QRectF bR = _survPolygon.boundingRect();
+    center /= _survPolygon->size();
+    QRectF bR = _survPolygon->boundingRect();
 
     QList<QLineF> lineList;
     double maxWidth = qMax(bR.width(), bR.height());
@@ -49,7 +52,7 @@ void PathGenerator::_init()
 
     // Now intersect the lines with the polygon
     QList<QLineF> intersectLines;
-    intersectLinesWithPolygon(lineList, _survPolygon, intersectLines);
+    intersectLinesWithPolygon(lineList, *_survPolygon, intersectLines);
     _path = intersectLines;
 
 }
@@ -92,5 +95,20 @@ void PathGenerator::setGridAngle(double in)
 
 void PathGenerator::pathUpdation()
 {
-    _init();
+    _initNonRespectInnerHoles();
+}
+
+void PathGenerator::setPolyHolesList(const QList<QPolygonF>& in)
+{
+    _holes = &in;
+}
+
+void PathGenerator::setSurvPoly(const QPolygonF& in)
+{
+    _survPolygon = &in;
+}
+
+void PathGenerator::setPolyBoundary(const QPolygonF& in)
+{
+    _polyBoundary = &in;
 }

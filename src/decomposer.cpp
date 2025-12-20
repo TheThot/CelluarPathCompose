@@ -15,11 +15,21 @@ Decomposer::Decomposer(QObject *parent)
     , m_showDecomposition(true)
     , m_showOrientedRect(true)
 {
+    //создание созависимых сперва
+    _transects = new PathGenerator(10, m_sweepAngle, this);
+    connect(this, &Decomposer::sweepAngleChanged, _transects, &PathGenerator::pathUpdation);
+    connect(this, &Decomposer::originalPolygonChanged, this, [this] (){
+        _transects->setSurvPoly(m_originalPolygon);
+    });
+    connect(this, &Decomposer::holesPolygonsChanged, this, [this] (){
+        _transects->setPolyHolesList(m_holes);
+    });
+    
+    //после определяем остальное
 //    createDefaultPolygon();
     createPolygonWithHoles();
     updateDecomposition();
-    _transects = new PathGenerator(m_originalPolygon, m_orientedRect, 10, m_sweepAngle, this);
-    connect(this, &Decomposer::sweepAngleChanged, _transects, &PathGenerator::pathUpdation);
+
 }
 
 PathGenerator* Decomposer::transects() const{
@@ -177,6 +187,9 @@ void Decomposer::updateDecomposition() {
     // Выполняем бустрофедон декомпозицию
     m_bpd_decompositionCells = boustrophedonDecomposition_compact(m_originalPolygon, m_holes, m_mapOriendtedHoleRectLines, m_sweepAngle);
 
+    _transects->setPolyBoundary(m_orientedRect);
+    _transects->pathUpdation();
+
     emit decompositionCellsChanged();
     emit orientedRectChanged();
 }
@@ -190,6 +203,7 @@ void Decomposer::resetPolygon() {
 void Decomposer::resetToPolygonWithHoleState() {
     createPolygonWithHoles();
     emit originalPolygonChanged();
+    emit holesPolygonsChanged();
     updateDecomposition();
 }
 

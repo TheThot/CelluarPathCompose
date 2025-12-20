@@ -5,6 +5,7 @@
 #ifndef TRYCELLUARPATHCOMPOSE_PATH_GENERATOR_H
 #define TRYCELLUARPATHCOMPOSE_PATH_GENERATOR_H
 
+#include <memory>
 #include <QObject>
 #include <QPolygonF>
 #include <QLineF>
@@ -18,13 +19,20 @@ class PathGenerator : public QObject
 public:
     PathGenerator() = default;
     PathGenerator(QObject *parent);
-    PathGenerator(QPolygonF& inPolygon, QPolygonF& inBoundaryPoly, double inStep, double inAngle, QObject *parent);
+    PathGenerator(double inStep, double inAngle, QObject *parent);
     ~PathGenerator();
 
     QVariantList pathTraj() const;
 
-    void pathUpdation();
     void setGridAngle(double in);
+
+    void setPolyHolesList(const QList<QPolygonF>& in);
+    void setSurvPoly(const QPolygonF& in);
+    void setPolyBoundary(const QPolygonF& in);
+
+public slots:
+
+    void pathUpdation();
 
 signals:
     void pathTrajChanged();
@@ -32,12 +40,14 @@ signals:
 
 private:
 
-    void _init();
+    void _initNonRespectInnerHoles();
 
     QList<QLineF>   _path;
-    QPolygonF       _survPolygon;
-    QPolygonF       _polyBoundary;
     double          _gridSpace;
     double          _gridAngle;
+
+    const QList<QPolygonF>* _holes;
+    const QPolygonF* _survPolygon = nullptr;
+    const QPolygonF* _polyBoundary = nullptr;
 };
 #endif //TRYCELLUARPATHCOMPOSE_PATH_GENERATOR_H
