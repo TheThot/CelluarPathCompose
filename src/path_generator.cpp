@@ -22,11 +22,11 @@ PathGenerator::PathGenerator(double inStep, double inAngle, QObject *parent) :
 //    _initNonRespectInnerHoles();
 }
 
-void PathGenerator::_initNonRespectInnerHoles()
+QList<QLineF> PathGenerator::_initNonRespectInnerHoles()
 {
-
+    QList<QLineF> res = {};
     if(_survPolygon == nullptr)
-        return;
+        return res;
 
     // формируем полное покрытие полигона
     QPointF center;
@@ -53,8 +53,9 @@ void PathGenerator::_initNonRespectInnerHoles()
     // Now intersect the lines with the polygon
     QList<QLineF> intersectLines;
     intersectLinesWithPolygon(lineList, *_survPolygon, intersectLines);
-    _path = intersectLines;
+    res = intersectLines;
 
+    return res;
 }
 
 PathGenerator::~PathGenerator()
@@ -62,7 +63,7 @@ PathGenerator::~PathGenerator()
     _path.clear();
 }
 
-QVariantMap PathGenerator::oneLoopTraj(const QLineF& in) const
+QVariantMap PathGenerator::_oneLoopTraj(const QLineF& in) const
 {
     QVariantMap lineMap;
 
@@ -81,25 +82,6 @@ QVariantMap PathGenerator::oneLoopTraj(const QLineF& in) const
     return lineMap;
 }
 
-/*
-QVariantMap PathGenerator::twoLoopTraj(const QLineF& in) const
-{
-    QVariantList result;
-    QVariantList row;
-
-    // комбинируем в одном QVariantList все остальные QVariantList'ы
-    for (const auto &segments : in) {
-        for(const auto &segment : segments) {
-            QVariantMap pointMap;
-            pointMap["x"] = p.x();
-            pointMap["y"] = p.y();
-            row.append(pointMap);
-        }
-        result.append(QVariant::fromValue(row));
-        row.clear();
-    }
-}*/
-
 QVariantList PathGenerator::pathTraj() const
 {
     QVariantList pathTraj;
@@ -108,7 +90,7 @@ QVariantList PathGenerator::pathTraj() const
     if (!_isHolesActive)
         for (const auto& path : _path)
         {
-            auto lineMap = oneLoopTraj(path);
+            auto lineMap = _oneLoopTraj(path);
             pathTraj.append(lineMap);
         }
     else {
@@ -139,10 +121,11 @@ void PathGenerator::pathUpdation()
     _path.clear();
     _pathRespectHoles.clear();
 
-    _initNonRespectInnerHoles();
+    _path = _initNonRespectInnerHoles();
+    _orientNonRespectPath();
 
     if(_holes != nullptr)
-        _initLinesRespectHoles();
+        _pathRespectHoles = _initLinesRespectHoles();
 }
 
 void PathGenerator::setPolyHolesList(const QList<QPolygonF>& in)
@@ -161,15 +144,16 @@ void PathGenerator::setPolyBoundary(const QPolygonF& in)
     _polyBoundary = &in;
 }
 
-void PathGenerator::_initLinesRespectHoles()
+QList<QList<QPointF>> PathGenerator::_initLinesRespectHoles()
 {
+    QList<QList<QPointF>> res = {};
     if(_holes == nullptr)
-        return;
+        return res;
 
     QLineF holeL;
     for (const auto& currTransect : _path)
     {
-        QList<QPointF> res;
+        QList<QPointF> resI;
         QList<QPointF> buff;
         QList<double> dist;
         buff.append(currTransect.p1());
@@ -180,21 +164,114 @@ void PathGenerator::_initLinesRespectHoles()
                 int k = (i + 1) % currHolePoly.count();
                 holeL = QLineF(currHolePoly[i], currHolePoly[k]);
                 //res - все пересечения линии с любыми _holes
-                intersectionListFormimgRoutine(currTransect, holeL, res, QLineF::BoundedIntersection);
+                intersectionListFormimgRoutine(currTransect, holeL, resI, QLineF::BoundedIntersection);
             }
         }
         // сразу buff пересечений класть в _pathRespectHoles нельзя
         // сперва отсортировать по расстояниям
-        for(const auto& oneIntersection:res){
+        for(const auto& oneIntersection:resI){
             holeL = QLineF(currTransect.p1(), oneIntersection);
             dist.append(holeL.length());
         }
         auto idx = sort_indexes<double>(dist);
         for(const auto& currI:idx){
-            buff.append(res[currI]);
+            buff.append(resI[currI]);
         }
         buff.append(currTransect.p2());
 //        std::cout << "[_initLinesRespectHoles] buff length is " << buff.count() << std::endl;
-        _pathRespectHoles.append(buff);
+        res.append(buff);
     }
+
+    return res;
+}
+
+QPointF PathGenerator::startP() const{
+    return _startEndP.first;
+}
+
+QPointF PathGenerator::endP() const{
+    return _startEndP.second;
+}
+
+template<typename Type>
+void PathGenerator::_orientLineOneDirection(const QList<Type>& lineList, QList<Type>& resultLines) {
+    qreal firstAngle = 0;
+    for (const Type & currLine : lineList) {
+        Type res_line;
+        for(int k = 0; k < currLine.count()-1; ++(++k)) {
+            const QLineF &line = QLineF(currLine[k], currLine[k+1]);
+            QLineF adjustedLine;
+
+            if (lineList.first() == currLine) {
+                firstAngle = line.angle();
+            }
+
+            if (qAbs(line.angle() - firstAngle) > 1.0) {
+                adjustedLine.setP1(line.p2());
+                adjustedLine.setP2(line.p1());
+            } else {
+                adjustedLine = line;
+            }
+
+            res_line << adjustedLine.p1();
+            res_line << adjustedLine.p2();
+        }
+        resultLines.append(res_line);
+    }
+}
+
+// обратный ход для вектора
+template<typename Type>
+void PathGenerator::_adjustToLawnower_oneVectorCase(const Type &lineList, Type &resultLines, bool &reverseVertices) {
+
+    Type transectVertices = lineList;
+    if (reverseVertices) {
+        reverseVertices = false;
+        Type reversedVertices;
+        for (int j = transectVertices.count() - 1; j >= 0; j--) {
+            reversedVertices += transectVertices[j];
+        }
+        transectVertices = reversedVertices;
+    } else {
+        reverseVertices = true;
+    }
+    resultLines = transectVertices;
+
+}
+
+QList<QList<QPointF>> PathGenerator::_orientNonRespectPath(){
+    QList<QList<QPointF>> res1 = {};
+
+    if(_path.count() < 1){
+        _startEndP.first = QPointF{-1e4, -1e4};
+        _startEndP.second = _startEndP.first;
+        return res1;
+    }
+
+    for(const auto& currL:_path){
+        QList<QPointF> buffL;
+        buffL   << currL.p1()
+                << currL.p2();
+        res1.append(buffL);
+    }
+    // убеждаемся что все линии в одном направлении
+    QList<QList<QPointF>> res2 = {};
+    _orientLineOneDirection<QList<QPointF>>(res1, res2);
+
+    res1.clear();
+
+    // чередование направления линий змейкой
+    bool reverse = false;
+    for(const auto& row: res2){
+        QList<QPointF> buffL;
+        _adjustToLawnower_oneVectorCase(row, buffL, reverse);
+        res1.append(buffL);
+    }
+
+    // формируем точку входа выхода
+    _startEndP.first    = res1[0][0];
+    const auto& lastRow =  res1[res1.count()-1];
+    _startEndP.second   = lastRow[lastRow.count()-1];
+
+    return res1;
 }

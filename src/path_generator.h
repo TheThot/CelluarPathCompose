@@ -13,6 +13,8 @@ class PathGenerator : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QVariantList pathTraj READ pathTraj NOTIFY pathTrajChanged)
+    Q_PROPERTY(QPointF startP READ startP NOTIFY startEndChanged)
+    Q_PROPERTY(QPointF endP READ endP NOTIFY startEndChanged)
 
 public:
     PathGenerator() = default;
@@ -21,6 +23,8 @@ public:
     ~PathGenerator();
 
     QVariantList pathTraj() const;
+    QPointF startP() const;
+    QPointF endP() const;
 
     void setGridAngle(double in);
 
@@ -35,19 +39,27 @@ public slots:
 signals:
     void pathTrajChanged();
     void updatePath();
+    void startEndChanged();
 
 private:
 
-    void _initNonRespectInnerHoles();
-    void _initLinesRespectHoles();
-    QVariantMap oneLoopTraj(const QLineF& in) const;
-    // QVariantMap twoLoopTraj(const QLineF& in) const;
+    QList<QLineF>           _initNonRespectInnerHoles();
+    QList<QList<QPointF>>   _initLinesRespectHoles();
+    QVariantMap             _oneLoopTraj(const QLineF& in) const;
+    QList<QList<QPointF>>   _orientNonRespectPath();
+    template<typename Type>
+    void                    _orientLineOneDirection(const QList<Type>& lineList, QList<Type>& resultLines);
+    template<typename Type>
+    void                    _adjustToLawnower_oneVectorCase(const Type &lineList, Type &resultLines, bool &reverseVertices);
+
+    QPair<QPointF,QPointF> _startEndP;
 
     bool            _isHolesActive = false;
     QList<QLineF>   _path;
     double          _gridSpace;
     double          _gridAngle;
     QList<QList<QPointF>>   _pathRespectHoles;
+    QList<QList<QPointF>>   _orientedPathSimpl; // non-Inner Incl path oriented _path var above
 
     const QList<QPolygonF>* _holes = nullptr;
     const QPolygonF* _survPolygon = nullptr;

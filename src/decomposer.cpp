@@ -17,7 +17,7 @@ Decomposer::Decomposer(QObject *parent)
     , m_showOrientedRect(true)
 {
     //создание созависимых сперва
-    _transects = new PathGenerator(10, m_sweepAngle, this);
+    _transects = new PathGenerator(45, m_sweepAngle, this);
     connect(this, &Decomposer::sweepAngleChanged, _transects, &PathGenerator::pathUpdation);
     connect(this, &Decomposer::originalPolygonChanged, this, [this] (){
         _transects->setSurvPoly(m_originalPolygon);

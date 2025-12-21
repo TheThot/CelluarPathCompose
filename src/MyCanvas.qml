@@ -28,6 +28,7 @@ Canvas {
 
         if (decomposer.showPathCoverage) {
             drawTransects(ctx)
+            drawSFpoints(ctx)
         }
 
         if (decomposer.showDecomposition) {
@@ -47,6 +48,34 @@ Canvas {
         var lines = pathgenerator.pathTraj
 
         drawLines(ctx, lines, "#101D6B")
+    }
+
+    function drawSFpoints(ctx){
+        var pointS = pathgenerator.startP
+        var pointF = pathgenerator.endP
+
+        ctx.beginPath()
+        ctx.arc(pointS.x, pointS.y, 10, 0, Math.PI * 2)
+        ctx.fillStyle = "rgba(0, 0, 0, 0)"
+        ctx.fill()
+        ctx.strokeStyle = "red"
+        ctx.lineWidth = 2
+        ctx.stroke()
+
+        ctx.beginPath()
+        ctx.arc(pointF.x, pointF.y, 10, 0, Math.PI * 2)
+        ctx.fillStyle = "rgba(0, 0, 0, 0)"
+        ctx.fill()
+        ctx.strokeStyle = "red"
+        ctx.lineWidth = 2
+        ctx.stroke()
+
+        ctx.fillStyle = "red"
+        ctx.font = "16px Arial"
+        ctx.textAlign = "center"
+        ctx.textBaseline = "middle"
+        ctx.fillText("S", pointS.x, pointS.y)
+        ctx.fillText("F", pointF.x, pointF.y)
     }
 
     function drawOriginalPolygon(ctx) {
