@@ -196,56 +196,6 @@ Rectangle {
             font.bold: true
         }
 
-        Column {
-            spacing: 5
-            Layout.fillWidth: true
-
-            Button {
-                text: "Hexagon"
-                width: parent.width
-                visible: buttonsVisibleProp
-                onClicked: decomposer.resetPolygon()
-            }
-
-            Button {
-                text: "Star"
-                width: parent.width
-                visible: buttonsVisibleProp
-                onClicked: {
-                    var starPoints = []
-                    var points = 5
-                    var outerRadius = 150
-                    var innerRadius = 70
-                    for (var i = 0; i < points * 2; i++) {
-                        var radius = (i % 2 === 0) ? outerRadius : innerRadius
-                        var angle = Math.PI * i / points
-                        starPoints.push({
-                            "x": 300 + radius * Math.cos(angle),
-                            "y": 250 + radius * Math.sin(angle)
-                        })
-                    }
-                    decomposer.setOriginalPolygon(starPoints)
-                }
-            }
-
-            Button {
-                text: "Complex Shape"
-                width: parent.width
-                visible: buttonsVisibleProp
-                onClicked: {
-                    var x = getRandom(100);
-                    var y = getRandom(x);
-                    var complexPoints = []
-                    for (var i = 0; i < 5; i++) {
-                        complexPoints.push({"x": x, "y": y});
-                        x = getRandom(y);
-                        y = getRandom(x);
-                    }
-                    decomposer.setOriginalPolygon(complexPoints)
-                }
-            }
-        }
-
         // Информация
         Text {
             text: "Info:"
