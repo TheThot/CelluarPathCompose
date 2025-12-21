@@ -165,8 +165,9 @@ Rectangle {
 
             CheckBox {
                 id: showOrientedRectCheck
-                checked: true
+                checked: false
                 text: "Show Oriented Rect"
+                visible: false
                 contentItem: Text {
                     text: showOrientedRectCheck.text
                     color: "white"

@@ -378,7 +378,7 @@ void Decomposer::newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap
     for(int i = 0; i < hole.count(); ++i){
         int k = (i + 1) % hole.count();
         QLineF currHoleLine = QLineF(hole[i], hole[k]);
-        currHoleLine = extendLineBothWays(currHoleLine, 10);
+        currHoleLine = extendLineBothWays(currHoleLine, 0.5);
         // для надёжности оба типа внутреннее и внешнее пересечения
 //        intersectionListFormimgRoutine(currParallelOrientLineL, currHoleLine, intersectionsL_list, QLineF::UnboundedIntersection, maxBoundSurvPolyRad);
         intersectionListFormimgRoutine(currParallelOrientLineL, currHoleLine, intersectionsL_list, QLineF::BoundedIntersection, maxBoundSurvPolyRad);

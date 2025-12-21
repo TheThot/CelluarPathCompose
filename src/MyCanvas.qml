@@ -92,7 +92,7 @@ Canvas {
 
         if (!polygon || polygon.length < 3) return
 
-        drawPolygon(ctx, polygon, "green", "rgba(0, 0, 0, 0)", 2)
+        drawPolygon(ctx, polygon, "rgba(0, 255, 0, 0.4)", "rgba(0, 0, 0, 0)", 2)
 
         holesArray.forEach(function(onePoly) {
             drawPolygon(ctx, onePoly, "red", "rgba(255, 0, 0, 0.4)", 2)
