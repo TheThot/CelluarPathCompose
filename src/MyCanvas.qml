@@ -158,32 +158,27 @@ Canvas {
         })
     }
 
+    function drawAline(ctx, from, to, color){
+        ctx.beginPath()
+        ctx.moveTo(from.x, from.y)  // Начало линии
+        ctx.lineTo(to.x, to.y)  // Конец линии
+        ctx.strokeStyle = color
+        ctx.lineWidth = 4
+        ctx.stroke()
+    }
+
     function drawLines(ctx, lines, color){
         ctx.save()
         // ctx.setLineDash([])  // Явно сбрасываем пунктир
-        if(!showPolyWithHoles) {
-            for (var line of lines) {
-                ctx.beginPath()
-                ctx.moveTo(line.p1.x, line.p1.y)  // Начало линии
-                ctx.lineTo(line.p2.x, line.p2.y)  // Конец линии
-                ctx.strokeStyle = color
-                ctx.lineWidth = 4
-                ctx.stroke()
+        var step = showPolyWithHoles ? 2 : 1;
+        for (var k = 0; k < lines.length; k++) {
+            for(var j = 0; j < lines[k].length-1; j+=step){
+                drawAline(ctx, lines[k][j], lines[k][j+1], color)
             }
-        }else{
-            for (var oneDivLine of lines) {
-                for(var i = 0; i < oneDivLine.length-1; i+=2){
-                    ctx.beginPath()
-                    ctx.moveTo(oneDivLine[i].x, oneDivLine[i].y)  // Начало линии
-                    ctx.lineTo(oneDivLine[i+1].x, oneDivLine[i+1].y)  // Конец линии
-                    ctx.strokeStyle = color
-                    ctx.lineWidth = 4
-                    ctx.stroke()
-                }
-
+            if(k > 0 && k < lines.length){ // переходы змейки
+                drawAline(ctx, lines[k-1][lines[k-1].length-1], lines[k][0], color)
             }
         }
-
         ctx.restore()  // восстановить состояние контекста
     }
 

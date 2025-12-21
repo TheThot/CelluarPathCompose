@@ -63,23 +63,23 @@ PathGenerator::~PathGenerator()
     _path.clear();
 }
 
-QVariantMap PathGenerator::_oneLoopTraj(const QLineF& in) const
+QVariantList PathGenerator::_oneLoopTraj(const QList<QList<QPointF>>& in) const
 {
-    QVariantMap lineMap;
+    QVariantList pathTraj;
 
-    // Точка p1
-    QVariantMap point1Map;
-    point1Map["x"] = in.p1().x();
-    point1Map["y"] = in.p1().y();
-    lineMap["p1"] = point1Map;
+    QVariantList row;
+    for (const auto &lineS: in) {
+        for (const auto &p: lineS) {
+            QVariantMap pointMap;
+            pointMap["x"] = p.x();
+            pointMap["y"] = p.y();
+            row.append(pointMap);
+        }
+        pathTraj.append(QVariant::fromValue(row));
+        row.clear();
+    }
 
-    // Точка p2
-    QVariantMap point2Map;
-    point2Map["x"] = in.p2().x();
-    point2Map["y"] = in.p2().y();
-    lineMap["p2"] = point2Map;
-
-    return lineMap;
+    return pathTraj;
 }
 
 QVariantList PathGenerator::pathTraj() const
@@ -87,25 +87,11 @@ QVariantList PathGenerator::pathTraj() const
     QVariantList pathTraj;
 
     // определяем какой у нас активен режим ? от этого будет зависеть возвращаемое в qml значение
-    if (!_isHolesActive)
-        for (const auto& path : _path)
-        {
-            auto lineMap = _oneLoopTraj(path);
-            pathTraj.append(lineMap);
-        }
+    if (!_isHolesActive) {
+        pathTraj = _oneLoopTraj(_orientedPathSimpl);
+    }
     else {
-
-        QVariantList row;
-        for (const auto &lineS: _pathRespectHoles) {
-            for (const auto &p: lineS) {
-                QVariantMap pointMap;
-                pointMap["x"] = p.x();
-                pointMap["y"] = p.y();
-                row.append(pointMap);
-            }
-            pathTraj.append(QVariant::fromValue(row));
-            row.clear();
-        }
+        pathTraj = _oneLoopTraj(_pathRespectHoles);
     }
 
     return pathTraj;
@@ -122,7 +108,7 @@ void PathGenerator::pathUpdation()
     _pathRespectHoles.clear();
 
     _path = _initNonRespectInnerHoles();
-    _orientNonRespectPath();
+    _orientedPathSimpl = _orientNonRespectPath();
 
     if(_holes != nullptr)
         _pathRespectHoles = _initLinesRespectHoles();

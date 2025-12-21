@@ -45,7 +45,7 @@ private:
 
     QList<QLineF>           _initNonRespectInnerHoles();
     QList<QList<QPointF>>   _initLinesRespectHoles();
-    QVariantMap             _oneLoopTraj(const QLineF& in) const;
+    QVariantList             _oneLoopTraj(const QList<QList<QPointF>>& in) const;
     QList<QList<QPointF>>   _orientNonRespectPath();
     template<typename Type>
     void                    _orientLineOneDirection(const QList<Type>& lineList, QList<Type>& resultLines);
