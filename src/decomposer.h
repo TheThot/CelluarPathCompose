@@ -130,6 +130,11 @@ private:
                                                      QList<QPointF>& returnDownL);
 
     // Утилиты
+    void iniAllAlliasBCD(int size, QList<QMap<OrientedLine, QLineF>>& copy,
+                        QList<QList<qreal>>& yLevelsHolesList,
+                        QList<QPolygonF>& readyPolyUp, QList<QPolygonF>& readyPolyDown,
+                        QList<QList<QPointF>>& holeBorderUp,
+                        QList<QList<QPointF>>& holeBorderDown);
     template <typename T>
     T rotationStruct(const T& v, double sweepAngle);
     void newParallFormingRoutine(const QMap<OrientedLine, QLineF>& inMap,
