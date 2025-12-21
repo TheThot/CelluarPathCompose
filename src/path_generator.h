@@ -27,6 +27,7 @@ public:
     QPointF endP() const;
 
     void setGridAngle(double in);
+    void setTransectWidth(double in);
 
     void setPolyHolesList(const QList<QPolygonF>& in);
     void setSurvPoly(const QPolygonF& in);

@@ -261,3 +261,7 @@ QList<QList<QPointF>> PathGenerator::_orientNonRespectPath(){
 
     return res1;
 }
+
+void PathGenerator::setTransectWidth(double in) {
+    _gridSpace = in;
+}

@@ -15,9 +15,10 @@ Decomposer::Decomposer(QObject *parent)
     , m_sweepAngle(0.0)
     , m_showDecomposition(true)
     , m_showOrientedRect(true)
+    , _trWidth(45)
 {
     //создание созависимых сперва
-    _transects = new PathGenerator(30, m_sweepAngle, this);
+    _transects = new PathGenerator(_trWidth, m_sweepAngle, this);
     connect(this, &Decomposer::sweepAngleChanged, _transects, &PathGenerator::pathUpdation);
     connect(this, &Decomposer::originalPolygonChanged, this, [this] (){
         _transects->setSurvPoly(m_originalPolygon);
@@ -840,4 +841,17 @@ void Decomposer::setShowPathCoverage(bool in) {
 
     _isPathShow = in;
     emit showPathCoverageChanged();
+}
+
+void Decomposer::setTransectWidth(double w) {
+    if (qFuzzyCompare(_trWidth, w))
+        return;
+
+    _trWidth = w;
+    transects()->setTransectWidth(_trWidth);
+    emit trWdthChanged();
+}
+
+double Decomposer::transectWidth() const {
+    return _trWidth;
 }

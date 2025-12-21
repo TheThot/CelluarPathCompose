@@ -16,6 +16,7 @@ Rectangle {
     property alias showDecomposition: showDecompositionCheck.checked
     property alias showOrientedRect: showOrientedRectCheck.checked
     property alias showPathCoverage: showPathCoverageCheck.checked
+    property alias widthSpace: trWSlider.value
 
     function getRandom(previousValue) {
         return Math.floor(previousValue + Math.random() * 90) % 360;
@@ -143,6 +144,22 @@ Rectangle {
             from: 0
             to: 180
             value: 0
+            stepSize: 1
+        }
+
+        // Управление углом
+        Text {
+            text: "Transect Space Width : " + trWSlider.value.toFixed(1)
+            color: "white"
+            font.pixelSize: 14
+        }
+
+        Slider {
+            id: trWSlider
+            Layout.fillWidth: true
+            from: 5
+            to: 60
+            value: 30
             stepSize: 1
         }
 

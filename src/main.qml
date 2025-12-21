@@ -22,6 +22,7 @@ Window {
         showDecomposition:  myToolbar.showDecomposition
         showOrientedRect:   myToolbar.showOrientedRect
         showPathCoverage:   myToolbar.showPathCoverage
+        transectWidth:      myToolbar.widthSpace
 
     }
 
@@ -93,5 +94,6 @@ Window {
         function onSweepAngleChanged() { canvas.requestPaint() }
         function onShowDecompositionChanged() { canvas.requestPaint() }
         function onShowOrientedRectChanged() { canvas.requestPaint() }
+        function ontrWdthChanged() { canvas.requestPaint() }
     }
 }

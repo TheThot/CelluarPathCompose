@@ -17,7 +17,8 @@ class Decomposer : public QObject
     Q_PROPERTY(QVariantList decompositionCells READ decompositionCells NOTIFY decompositionCellsChanged)
     Q_PROPERTY(QVariantList bpdDecompositionCells READ bpdDecompositionCells NOTIFY decompositionCellsChanged)
     Q_PROPERTY(QVariantList orientedRect READ orientedRect NOTIFY orientedRectChanged)
-    Q_PROPERTY(double sweepAngle READ sweepAngle WRITE setSweepAngle NOTIFY sweepAngleChanged)
+    Q_PROPERTY(double transectWidth READ transectWidth WRITE setTransectWidth NOTIFY sweepAngleChanged)
+    Q_PROPERTY(double sweepAngle READ sweepAngle WRITE setSweepAngle NOTIFY trWdthChanged)
     Q_PROPERTY(bool showDecomposition READ showDecomposition WRITE setShowDecomposition NOTIFY showDecompositionChanged)
     Q_PROPERTY(bool showOrientedRect READ showOrientedRect WRITE setShowOrientedRect NOTIFY showOrientedRectChanged)
     Q_PROPERTY(QVariantList test_2Darray READ test_2Darray WRITE setTest_2Darray)
@@ -31,6 +32,7 @@ public:
     explicit Decomposer(QObject *parent = nullptr);
 
     // Основные свойства
+    double transectWidth() const;
     bool         showPathCoverage() const;
     PathGenerator* transects() const;
     QVariantList holes_2Darray() const;
@@ -61,6 +63,7 @@ public:
     }
 
     // Методы для вызова из QML
+    Q_INVOKABLE void setTransectWidth(double w);
     Q_INVOKABLE void setShowPathCoverage(bool in);
     Q_INVOKABLE void setOriginalPolygon(const QVariantList &polygon);
     Q_INVOKABLE void setSweepAngle(double angle);
@@ -91,6 +94,7 @@ signals:
     void holesPolygonsChanged();
     void orientedHoleRectsChanged();
     void showPathCoverageChanged();
+    void trWdthChanged();
 
 private:
     enum class OrientPointNames
@@ -182,6 +186,7 @@ private:
     enum class BCD_levels;
     PathGenerator* _transects;
     bool            _isPathShow;
+    double          _trWidth;
 
     // Предопределенные полигоны
     void createDefaultPolygon();
