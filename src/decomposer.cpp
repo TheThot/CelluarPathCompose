@@ -2,7 +2,6 @@
 // Created by Admin on 08.12.2025.
 //
 #include "decomposer.h"
-#include "utils.h"
 #include <algorithm>
 #include <iostream>
 #include <ostream>
@@ -136,6 +135,7 @@ void Decomposer::setSweepAngle(double angle) {
 
     m_sweepAngle = angle;
     transects()->setGridAngle(m_sweepAngle);
+    _transects->pathUpdation();
     emit sweepAngleChanged();
     updateDecomposition();
 }
@@ -163,6 +163,8 @@ void Decomposer::updateDecomposition() {
     m_orientedHoleRects.clear();
     m_mapOriendtedHoleRectLines.clear();
     m_bpd_decompositionCells.clear();
+    _holeData.holeBorderSegm.clear();
+    _holeData.holeToBCD.clear();
 
     if (m_originalPolygon.size() < 3) {
         emit decompositionCellsChanged();
@@ -189,7 +191,11 @@ void Decomposer::updateDecomposition() {
     // Выполняем бустрофедон декомпозицию
     m_bpd_decompositionCells = boustrophedonDecomposition_compact(m_originalPolygon, m_holes, m_mapOriendtedHoleRectLines, m_sweepAngle);
 
+    feedHolesInfoIn();
+
     _transects->setPolyBoundary(m_orientedRect);
+    _transects->setDecomposeStruct(_holeData);
+    _transects->setPathSegments(m_bpd_decompositionCells);
     _transects->pathUpdation();
 
     emit decompositionCellsChanged();
@@ -379,8 +385,8 @@ void Decomposer::newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap
     for(int i = 0; i < hole.count(); ++i){
         int k = (i + 1) % hole.count();
         QLineF currHoleLine = QLineF(hole[i], hole[k]);
-        currHoleLine = extendLineBothWays(currHoleLine, 0.5);
-        // для надёжности оба типа внутреннее и внешнее пересечения
+        currHoleLine = extendLineBothWays(currHoleLine, 0.5); // для надёжности удлиняем линии границ hole
+
         intersectionListFormimgRoutine(currParallelOrientLineL, currHoleLine, intersectionsL_list, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
         intersectionListFormimgRoutine(currParallelOrientLineR, currHoleLine, intersectionsR_list, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
     }
@@ -427,11 +433,6 @@ T Decomposer::rotationStruct(const T& v, double sweepAngle) {
     }
     return res;
 }
-
-enum class Decomposer::BCD_levels
-{
-    //TODO
-};
 
 void Decomposer::iniAllAlliasBCD(int size, QList<QMap<OrientedLine, QLineF>>& copy,
                                 QList<QList<qreal>>& yLevelsHolesList,
@@ -493,6 +494,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
     QList<qreal> yLevelsOrientLines;
     for(int i = 0; i < mapOriendtedHoleRectLines.count(); ++i) //распаковываем по одной штук на каждую hole
     {
+        QPair<QList<QPointF>,QList<QPointF>> buffP;
         QLineF parallelSweepLRot, parallelSweepRRot;
         // Организация данных в новую структуру схожую с mapOriendtedHoleRectLines
         // 0. Preprocessing получаем линии Parallel L и R длинные до пересечений boundedRect SurvPoly
@@ -509,6 +511,9 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
                                                     readyPolyDown[i],
                                                     holeBorderUp[i],
                                                     holeBorderDown[i]);
+        buffP.first = holeBorderUp[i];
+        buffP.second = holeBorderDown[i];
+        _holeData.holeBorderSegm[&m_holes[i]] = buffP;
         // 2. В compact реализации 2 и 3 пункт пропускаем
         // 4. Поворот Parallel L и R
         QPolygonF buff = flambdaDirect(copy[i][OrientedLine::ParallelSweepL]);
@@ -529,7 +534,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
     // поворачиваем полигон SurvPoly
     auto rotatedPolygon = rotationStruct<QPolygonF>(polygon, sweepAngle);
     // после того как весь QList mapOriendtedHoleRectLines обработан и сориентрован выполняем деление на зоны
-    // 4. формирование yLevels по аналогии с trapezoidalCellAlgorithm и зон
+    // 4. формирование yLevels по аналогии с trapezoidalCellAlgorithm
     // упорядовачиваем координаты вершин, уникальные
     QList<qreal> yLevels;
     for (const QPointF& point : rotatedPolygon) {
@@ -540,6 +545,25 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
     std::sort(yLevels.begin(), yLevels.end());
     std::sort(yLevelsOrientLines.begin(), yLevelsOrientLines.end());
 
+    // ------------ решение для зон с U и D ----------------
+    QPolygonF buff;
+    for(int i = 0; i < copy.count(); ++i)
+    {
+        buff.clear();
+        buff    << copy[i][OrientedLine::PerpendiclSweepU].p1()
+                << copy[i][OrientedLine::PerpendiclSweepU].p2()
+                << copy[i][OrientedLine::ParallelSweepL].p2()
+                << copy[i][OrientedLine::ParallelSweepR].p2();
+        buff = sortPolygonClockwise(buff);
+        resCells.append(buff);
+        buff.clear();
+        buff    << copy[i][OrientedLine::PerpendiclSweepD].p1()
+                << copy[i][OrientedLine::PerpendiclSweepD].p2()
+                << copy[i][OrientedLine::ParallelSweepL].p1()
+                << copy[i][OrientedLine::ParallelSweepR].p1();
+        buff = sortPolygonClockwise(buff);
+        resCells.append(buff);
+    }
     // ------------------------вспомогательная функция внесения двух крайних зон -------------------------------
     auto lambdaLREdges = [this](double sweepAngle, double yMinPoly, double yMinHole,
                                                                                     const QPolygonF& rotatedPolygon, QList<QPolygonF>& resCells, bool isLeftSide){
@@ -563,7 +587,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         buff = sortPolygonClockwise(buff);
         resCells.append(buff);
     };
-    //сформируем для проверки две крайних боковых зоны
+    // две крайних боковых зоны
     double yMinPoly, yMinHole;
     yMinPoly = yLevels[0];
     yMinHole = yLevelsOrientLines[0];
@@ -614,25 +638,6 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
     };
     lambdaBetwenes(copy, polygon, resCells, false);
     lambdaBetwenes(copy, polygon, resCells, true);
-    // ------------ решение для зон с U и D ----------------
-    QPolygonF buff;
-    for(int i = 0; i < copy.count(); ++i)
-    {
-        buff.clear();
-        buff    << copy[i][OrientedLine::PerpendiclSweepU].p1()
-                << copy[i][OrientedLine::PerpendiclSweepU].p2()
-                << copy[i][OrientedLine::ParallelSweepL].p2()
-                << copy[i][OrientedLine::ParallelSweepR].p2();
-        buff = sortPolygonClockwise(buff);
-        resCells.append(buff);
-        buff.clear();
-        buff    << copy[i][OrientedLine::PerpendiclSweepD].p1()
-                << copy[i][OrientedLine::PerpendiclSweepD].p2()
-                << copy[i][OrientedLine::ParallelSweepL].p1()
-                << copy[i][OrientedLine::ParallelSweepR].p1();
-        buff = sortPolygonClockwise(buff);
-        resCells.append(buff);
-    }
 
     return resCells;
 }
@@ -666,6 +671,27 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
     return resCells;
 }
 
+void Decomposer::feedHolesInfoIn()
+{
+    int holeCount = 0;
+    for(int i = 0; i < 2*m_holes.count(); i+=2){
+        QPair<QPolygonF*,QPolygonF*> holeDataFeed1;
+        holeDataFeed1.first     = &m_bpd_decompositionCells[i];
+        holeDataFeed1.second    = &m_bpd_decompositionCells[i+1];
+        _holeData.holeToBCD[&m_holes[holeCount]] = holeDataFeed1;
+        ++holeCount;
+    }
+    //остальные зоны без QPolygonF holes
+    //их просто можно взять из m_bpd_decompositionCells начиная с индекса 2*m_holes.count()
+
+    //формируем holeBorderSegm
+    /*QPair<borderLine,borderLine> buff;
+    borderLine buffL;
+    for(int i = 0; i < m_holes.count(); ++i) {
+
+    }*/
+}
+
 QList<QPolygonF> Decomposer::getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes,
                                                           double angleDegrees) {
 //    m_mapOriendtedHoleRectLines.clear();
@@ -679,7 +705,7 @@ QList<QPolygonF> Decomposer::getOrientedBoundingHoleRects(const QPolygonF& polyg
     }
 
     QMap<OrientedLine, QLineF> buff;
-    for(const auto& currHole: holes) {
+    for(const auto& currHole: holes) { // зон U и D в два раза больше holes
         QPolygonF currOrieRect = getOrientedBoundingRect(currHole, buff, angleDegrees);
         m_mapOriendtedHoleRectLines.append(buff);
         orientedRects.append(currOrieRect);
@@ -849,6 +875,7 @@ void Decomposer::setTransectWidth(double w) {
 
     _trWidth = w;
     transects()->setTransectWidth(_trWidth);
+    _transects->pathUpdation();
     emit trWdthChanged();
 }
 

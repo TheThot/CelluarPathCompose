@@ -32,7 +32,7 @@ public:
     explicit Decomposer(QObject *parent = nullptr);
 
     // Основные свойства
-    double transectWidth() const;
+    double      transectWidth() const;
     bool         showPathCoverage() const;
     PathGenerator* transects() const;
     QVariantList holes_2Darray() const;
@@ -152,6 +152,7 @@ private:
     QPointF rotatePoint(const QPointF& point, double angle);
     QPointF inverseRotatePoint(const QPointF& point, double angle);
     double computePolygonArea(const QPolygonF& polygon) const;
+    void feedHolesInfoIn();
 
     template< typename Type > QVariantList configListVariantLists(Type in_array) const{
         QVariantList result;
@@ -183,10 +184,11 @@ private:
     QList<QPolygonF> m_holes;
     QList<QPolygonF> m_orientedHoleRects;
     QList<QMap<OrientedLine, QLineF>> m_mapOriendtedHoleRectLines; // переменная с информацией какая из ограничивающего holes фигуры паралельна галсу или нет
-    enum class BCD_levels;
+
     PathGenerator* _transects;
     bool            _isPathShow;
     double          _trWidth;
+    holesInfoIn     _holeData;
 
     // Предопределенные полигоны
     void createDefaultPolygon();

@@ -9,13 +9,17 @@
 #include <QPointF>
 #include <QPolygonF>
 #include <QLineF>
+#include <QHash>
+#include <QList>
+#include <QPair>
+
+struct holesInfoIn{
+    QHash<const QPolygonF*, QPair<QList<QPointF>,QList<QPointF>>>  holeBorderSegm;
+    QHash<const QPolygonF*, QPair<QPolygonF*,QPolygonF*>>          holeToBCD;  // BCD levels только для holes
+};
 
 namespace baseFunc {
-    /*class Utilz : public QObject {
-        Q_OBJECT
-    public:
 
-    };*/
     static void intersectLinesWithPolygon(const QList<QLineF>& lineList, const QPolygonF& polygon, QList<QLineF>& resultLines)
     {
         resultLines.clear();
@@ -109,7 +113,7 @@ namespace baseFunc {
                 intersections_list.append(resIntersection);
     }*/
 
-    static void intersectionListFormimgRoutine(const QLineF& l1, const QLineF& l2, QList<QPointF>& intersections_list, QLineF::IntersectionType foundingType,
+    static bool intersectionListFormimgRoutine(const QLineF& l1, const QLineF& l2, QList<QPointF>& intersections_list, QLineF::IntersectionType foundingType,
                                         uint64_t maxBoundSurvPolyRad = 1e3)
     {
         // на случай QLineF::UnboundedIntersection ограничиваем возможные пересечения за пределами области определения линий самым большим размером = max(SurvPolyBoundRect)
@@ -118,11 +122,13 @@ namespace baseFunc {
 
         if(flag != 0) // берём l2 в условие потому что это линия должна быть со структуры полигона with holes
             if(static_cast<uint64_t>(QLineF(l2.p1(), resIntersection).length()) > maxBoundSurvPolyRad)
-                return;
+                return false;
 
         if (flag == foundingType)
             if (!intersections_list.contains(resIntersection))
                 intersections_list.append(resIntersection);
+
+        return flag == foundingType;
     }
 
 

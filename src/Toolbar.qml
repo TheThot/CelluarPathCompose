@@ -149,7 +149,7 @@ Rectangle {
 
         // Управление углом
         Text {
-            text: "Transect Space Width : " + trWSlider.value.toFixed(1)
+            text: "Path Space Width : " + trWSlider.value.toFixed(1)
             color: "white"
             font.pixelSize: 14
         }
