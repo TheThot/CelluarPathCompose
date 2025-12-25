@@ -13,9 +13,11 @@ public:
 
     static bool isEqual(const QPointF &a, const QPointF &b);
 
-    bool init(const QPointF &pointFrom, const QPointF &pointTo, const QList<QPolygonF> &obstacles);
+    void init(const QList<QPolygonF> &obstacles);
 
-    void perform();
+    void perform(const QPointF &pointFrom, const QPointF &pointTo);
+
+    QList<QPointF> getPath2d();
 
 private:
     static const double _gridSize;  //Размер ячейки области

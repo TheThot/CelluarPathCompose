@@ -3,8 +3,8 @@
 #include <cmath>
 #include <QLineF>
 
-const double PathFinderCalculator::_gridSize = 2.0;
-const int PathFinderCalculator::_worldOffset = 3;
+const double PathFinderCalculator::_gridSize = 20.0;
+const int PathFinderCalculator::_worldOffset = 0;
 
 PathFinderCalculator::PathFinderCalculator() {
     clear();
@@ -14,23 +14,21 @@ PathFinderCalculator::~PathFinderCalculator() {
 }
 
 bool PathFinderCalculator::isEqual(const QPointF &a, const QPointF &b) {
-    return QLineF{a, b}.length();
+    return QLineF{a, b}.length() < 1e6;
 }
 
-bool PathFinderCalculator::init(const QPointF &pointFrom, const QPointF &pointTo, const QList<QPolygonF> &obstacles) {
-    if (!pointFrom.isNull() || !pointTo.isNull()) return false;
-
+void PathFinderCalculator::init(const QList<QPolygonF> &obstacles) {
     clear();
+    _obstacles2d = obstacles;
+}
+
+void PathFinderCalculator::perform(const QPointF &pointFrom, const QPointF &pointTo) {
+    if (pointFrom.isNull() || pointTo.isNull())
+        return;
     _pointFrom2d = pointFrom;
     _pointTo2d = pointTo;
-    _obstacles2d = obstacles;
-
-    return true;
-}
-
-void PathFinderCalculator::perform() {
     buildPath2d();
-    simplifyPath2dByIntersect();
+//    simplifyPath2dByIntersect();
 }
 
 void PathFinderCalculator::clear() {
@@ -185,4 +183,8 @@ void PathFinderCalculator::simplifyPath2dByIntersect() {
         p1Index = p2Index;
     }
     _path2d = newPath;
+}
+
+QList<QPointF> PathFinderCalculator::getPath2d() {
+    return _path2d.toList();
 }

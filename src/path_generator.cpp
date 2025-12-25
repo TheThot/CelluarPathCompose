@@ -18,6 +18,7 @@ PathGenerator::PathGenerator(double inStep, double inAngle, QObject *parent) :
                             _gridSpace(inStep),
                             _gridAngle(inAngle)
 {
+    pfc = new PathFinderCalculator();
 //    _initNonRespectInnerHoles();
 }
 
@@ -117,6 +118,7 @@ void PathGenerator::pathUpdation()
     _currRule = _updateCountRule();
 
     if(_holes != nullptr) {
+        pfc->init(*_holes);
         _pathRespectHoles = _initLinesRespectHoles(_pathRespectHolesWithNum);
         _holeMannerPathSegm = _preProcRespectInnerHoles();
         _pathRespectHoles = _pathProcRespectInnerHoles();
@@ -554,12 +556,15 @@ int PathGenerator::goTroughtHoleDirectProc(QVector<int>& holesNumStack, QList<QL
     int skeepRowNums = 0;
 
     int sum = 0;
+    auto lastAdd = res.last()[1];
     for(int k = 0; k < 2; ++k) {
         revers *= -1;
         auto currList = _holeMannerPathSegm[revers*currSideNum];
         for(int i = k; i < currList.count(); ++i){
             QList<QPointF> buffL;
             for (const auto &curr: currList[i]) {
+                pfc->perform(lastAdd, curr.first);
+                buffL.append(pfc->getPath2d());
                 buffL.append(curr.first); // точка прилегающая к зоне или это граница survPoly
                 if (curr.second != 0) {  // другая точка сообщает есть ли рядом другие зоны
                     if(!holesNumStack.contains((-1) * curr.second) || !holesNumStack.contains(curr.second)) {

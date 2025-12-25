@@ -6,6 +6,7 @@
 #define TRYCELLUARPATHCOMPOSE_PATH_GENERATOR_H
 
 #include "utils.h"
+#include "PathFinderCalculator.h"
 #include <QPolygonF>
 #include <QLineF>
 #include <QVariantList>
@@ -109,5 +110,7 @@ private:
     const QList<QPolygonF>*     _bpd_decompositionCells = nullptr;
     bool                        _currRule;
     double                      _ruleRate;
+
+    PathFinderCalculator *pfc;
 };
 #endif //TRYCELLUARPATHCOMPOSE_PATH_GENERATOR_H
