@@ -14,6 +14,7 @@ else()
 endif()
 
 set(PROG_INCLUDE    ${CMAKE_CURRENT_SOURCE_DIR}/src
+                    ${CMAKE_CURRENT_SOURCE_DIR}/libs/a-star
                     ${Qt5Widgets_INCLUDE_DIRS}
                     ${QtQml_INCLUDE_DIRS})
 
@@ -22,6 +23,7 @@ set(Qt_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}/qresource.qrc")
 find_package(Qt5 COMPONENTS Core Quick QuickControls2 REQUIRED)
 
 add_subdirectory(src)
+add_subdirectory(libs/a-star)
 
 add_executable(TryCelluarPathCompose main.cpp
         ${Qt_RESOURCES})
@@ -38,6 +40,7 @@ target_link_libraries(TryCelluarPathCompose
         Qt5::QuickControls2
         PRIVATE
         src
+        a-star
 )
 
 include_directories(${PROG_INCLUDE})

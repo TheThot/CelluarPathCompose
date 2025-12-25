@@ -1,7 +1,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include "src/decomposer.h"
+#include "decomposer.h"
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
