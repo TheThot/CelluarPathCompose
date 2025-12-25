@@ -17,78 +17,28 @@ bool PathFinderCalculator::isEqual(const QPointF &a, const QPointF &b) {
     return QLineF{a, b}.length();
 }
 
-bool PathFinderCalculator::init(const QPointF &pointFrom, const QPointF &pointTo, const QVector<QPolygonF> &obstacles) {
+bool PathFinderCalculator::init(const QPointF &pointFrom, const QPointF &pointTo, const QList<QPolygonF> &obstacles) {
     if (!pointFrom.isNull() || !pointTo.isNull()) return false;
 
     clear();
-    _pointFrom = pointFrom;
-    _pointTo = pointTo;
+    _pointFrom2d = pointFrom;
+    _pointTo2d = pointTo;
     _obstacles2d = obstacles;
-
-    initPoints2d();
-    initObstacles2d();
 
     return true;
 }
 
 void PathFinderCalculator::perform() {
-    if (_obstacles.isEmpty()) {
-        _path.append(QVariant::fromValue(_pointFrom));
-        _path.append(QVariant::fromValue(_pointTo));
-        return;
-    }
-
-    if (!isIntersect(_pointFrom2d, _pointTo2d)) {
-        _path.append(QVariant::fromValue(_pointFrom));
-        _path.append(QVariant::fromValue(_pointTo));
-        return;
-    }
-
     buildPath2d();
     simplifyPath2dByIntersect();
 }
 
-QVariantList PathFinderCalculator::collisions() {
-    return _collisions;
-}
-
-QVariantList PathFinderCalculator::path() {
-    return _path;
-}
-
 void PathFinderCalculator::clear() {
-    _pointFrom = QPointF();
-    _pointTo = QPointF();
-    _obstacles.clear();
-    _collisions.clear();
-    _path.clear();
-
     _pointFrom2d = QPointF();
     _pointTo2d = QPointF();
     _obstacles2d.clear();
     _path2d.clear();
     _generator.clearCollisions();
-}
-
-void PathFinderCalculator::initPoints2d() {
-    _pointFrom2d = _pointFrom;
-    _pointTo2d = _pointTo;
-}
-
-void PathFinderCalculator::initObstacles2d() {
-    _obstacles2d.clear();
-    for (int itemIndex = 0; itemIndex < _obstacles.count(); itemIndex++) {
-        auto polygon = _obstacles2d[itemIndex];
-        QList<QPointF> points = polygon.toList();
-        if (!points.isEmpty()) {
-            QPolygonF polygon2d;
-            for (int pointIndex = 0; pointIndex < points.count(); pointIndex++) {
-                polygon2d.append(points[pointIndex]);
-            }
-            polygon2d.append(polygon2d.first());
-            _obstacles2d.append(polygon2d);
-        }
-    }
 }
 
 void PathFinderCalculator::buildPath2d() {
@@ -213,12 +163,6 @@ void PathFinderCalculator::initCollisions() {
                 collisionCell.append({xMin, yMin});
                 if (polygon.intersects(collisionCell)) {
                     _generator.addCollision({worldX, worldY});
-
-                    QVariantList collision;
-                    for (int pointIndex = 0; pointIndex < collisionCell.count(); pointIndex++) {
-                        collision.append(collisionCell[pointIndex]);
-                    }
-                    _collisions.append(QVariant::fromValue(collision));
                 }
             }
         }
