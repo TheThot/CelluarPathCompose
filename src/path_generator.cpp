@@ -118,7 +118,8 @@ void PathGenerator::pathUpdation()
     _currRule = _updateCountRule();
 
     if(_holes != nullptr) {
-        pfc->init(*_holes);
+        //pfc->init(*_holes);
+        pfc->init(*_holes, _polyBoundary->boundingRect().width(), _polyBoundary->boundingRect().height());
         _pathRespectHoles = _initLinesRespectHoles(_pathRespectHolesWithNum);
         _holeMannerPathSegm = _preProcRespectInnerHoles();
         _pathRespectHoles = _pathProcRespectInnerHoles();
@@ -564,10 +565,10 @@ QLineF testL;
             QList<QPointF> buffL;
             for (const auto &curr: currList[i]) {
                 testL = QLineF{lastAdd, curr.first};
-                testL = extendLineBothWays(testL, 2);
-                pfc->perform(testL.p1(), testL.p2());
+                testL = extendLineBothWays(testL, 10);
+                pfc->perform(testL.p1(), testL.p2(), _gridSpace);
                 auto pathBuff = pfc->getPath2d();
-//                pathBuff = uniformSample(pathBuff,4);
+                pathBuff = uniformSample(pathBuff,4);
                 buffL.append(pathBuff);
                 res.append(buffL);
                 return 0;

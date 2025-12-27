@@ -14,14 +14,19 @@ public:
     static bool isEqual(const QPointF &a, const QPointF &b);
 
     void init(const QList<QPolygonF> &obstacles);
+    void init(const QList<QPolygonF> &obstacles, int worldSizeX, int worldSizeY);
 
-    void perform(const QPointF &pointFrom, const QPointF &pointTo);
+    void perform(const QPointF &pointFrom, const QPointF &pointTo, double pathGridMargins);
 
     QList<QPointF> getPath2d();
 
 private:
-    static const double _gridSize;  //Размер ячейки области
-    static const int _worldOffset;  //Увеличение размера области, для обхода препятствий
+    double _pathGridMargins;  //Размер ячейки области
+    double _scaleX;
+    double _scaleY;
+    double _wrldX;
+    double _wrldY;
+    QPointF _centerArea;
 
     QPointF _pointFrom2d;
     QPointF _pointTo2d;
@@ -33,19 +38,15 @@ private:
 
     void buildPath2d();
 
-    bool isIntersect(const QPointF &p1, const QPointF &p2);
+    void initGenerator(double rectSizeX, double rectSizeY, double pathGridMargins);
 
-    void initGenerator();
+    AStar::Vec2i specifyVolume(double rectSizeX, double rectSizeY, double maxObstclSize, double pathGridMargins);
 
-    AStar::Vec2i getWorldSize();
-
-    static void getPolygonBoundary(const QPolygonF &polygon, double &xMin, double &yMin, double &xMax, double &yMax);
-
-    static void getWorldCoordinate(double x, double y, int &xWorld, int &yWorld);
-
-    static void worldCellLeftBottomCoordinate(int xWorld, int yWorld, double &x, double &y);
-
+    void initCollisions(const QPoint& centerArea);
     void initCollisions();
 
     void simplifyPath2dByIntersect();
+    bool isIntersect(const QPointF &p1, const QPointF &p2);
+
+    void getWorldCoordinate(double x, double y, int &xWorld, int &yWorld);
 };

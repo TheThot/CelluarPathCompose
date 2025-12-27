@@ -3,20 +3,25 @@
     Following tool is licensed under the terms and conditions of the ISC license.
     For more information visit https://opensource.org/licenses/ISC.
 */
-#ifndef __ASTAR_HPP_8F637DB91972F6C878D41D63F7E7214F__
-#define __ASTAR_HPP_8F637DB91972F6C878D41D63F7E7214F__
 
 #include <vector>
 #include <functional>
 #include <set>
 #include <map>
+#include <algorithm>
+#include <cmath>
+#include <memory>
 
 namespace AStar {
     struct Vec2i {
         int x, y;
         bool operator == (const Vec2i& coordinates_) const;
+        friend Vec2i operator + (const AStar::Vec2i& left_, const AStar::Vec2i& right_) {
+            return{ left_.x + right_.x, left_.y + right_.y };
+        }
     };
 
+    using uint = unsigned int;
     using HeuristicFunction = std::function<uint(Vec2i, Vec2i)>;
     using CoordinateList = std::vector<Vec2i>;
 
@@ -66,5 +71,3 @@ namespace AStar {
         static uint octagonal(Vec2i source_, Vec2i target_);
     };
 }
-
-#endif // __ASTAR_HPP_8F637DB91972F6C878D41D63F7E7214F__

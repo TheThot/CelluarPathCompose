@@ -3,9 +3,6 @@
 #include <cmath>
 #include <QLineF>
 
-const double PathFinderCalculator::_gridSize = 3;
-const int PathFinderCalculator::_worldOffset = 0;
-
 PathFinderCalculator::PathFinderCalculator() {
     clear();
 }
@@ -14,7 +11,7 @@ PathFinderCalculator::~PathFinderCalculator() {
 }
 
 bool PathFinderCalculator::isEqual(const QPointF &a, const QPointF &b) {
-    return QLineF{a, b}.length() < 1e6;
+    return QLineF{a, b}.length() < 1e-2;
 }
 
 void PathFinderCalculator::init(const QList<QPolygonF> &obstacles) {
@@ -22,13 +19,21 @@ void PathFinderCalculator::init(const QList<QPolygonF> &obstacles) {
     _obstacles2d = obstacles;
 }
 
-void PathFinderCalculator::perform(const QPointF &pointFrom, const QPointF &pointTo) {
+void PathFinderCalculator::init(const QList<QPolygonF> &obstacles, int worldSizeX, int worldSizeY) {
+    clear();
+    _obstacles2d = obstacles;
+    _wrldX = worldSizeX;
+    _wrldY = worldSizeY;
+}
+
+void PathFinderCalculator::perform(const QPointF &pointFrom, const QPointF &pointTo, double pathGridMargins) {
     if (pointFrom.isNull() || pointTo.isNull())
         return;
     _pointFrom2d = pointFrom;
     _pointTo2d = pointTo;
+    _pathGridMargins = pathGridMargins;
     buildPath2d();
-    simplifyPath2dByIntersect();
+//    simplifyPath2dByIntersect();
 }
 
 void PathFinderCalculator::clear() {
@@ -39,8 +44,50 @@ void PathFinderCalculator::clear() {
     _generator.clearCollisions();
 }
 
+void PathFinderCalculator::initGenerator(double rectSizeX, double rectSizeY, double pathGridMargins) {
+    double minObstclSize = 1e10;
+    for(const auto& currObstcl : _obstacles2d){
+        auto currBoundR = currObstcl.boundingRect();
+        minObstclSize = std::min(minObstclSize, std::min(currBoundR.height(), currBoundR.width()));
+    }
+    _generator.setWorldSize(specifyVolume(rectSizeX, rectSizeY, minObstclSize, pathGridMargins));
+    _generator.setHeuristic(AStar::Heuristic::octagonal);
+    _generator.setDiagonalMovement(true);
+}
+
+AStar::Vec2i PathFinderCalculator::specifyVolume(double rectSizeX, double rectSizeY, double obstclSize, double pathGridMargins)
+{
+    //так как в алгоритме Astar числа веществ проводим масштабирование
+    int scaleFact = std::ceil(obstclSize / pathGridMargins);
+    _scaleX = _scaleY = scaleFact;
+//    _scaleX = _scaleY = 1;
+    int resX, resY;
+    resX = std::ceil(rectSizeX / _scaleX);
+    resY = std::ceil(rectSizeY / _scaleY);
+    return AStar::Vec2i{resX, resY};
+}
+
+void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, int &yWorld) {
+    xWorld = std::floor(x / _scaleX);
+    yWorld = std::floor(y / _scaleY);
+}
+
 void PathFinderCalculator::buildPath2d() {
-    initGenerator();
+    /*if(isEqual(_pointFrom2d, _pointTo2d))
+        return;*/
+
+    double maxX, maxY, minY, minX;
+    maxX = std::max(_pointFrom2d.x(), _pointTo2d.x());
+    maxY = std::max(_pointFrom2d.y(), _pointTo2d.y());
+    minY = std::min(_pointFrom2d.y(), _pointTo2d.y());
+    minX = std::min(_pointFrom2d.x(), _pointTo2d.x());
+    QRectF pathBounds = QRectF(QPointF{minX,maxY}, QPointF{maxX,minY});
+
+    _centerArea = pathBounds.center();
+
+    initGenerator(_wrldX, _wrldY, _pathGridMargins);
+//    initGenerator(std::abs(pathBounds.width()) + _pathGridMargins, std::abs(pathBounds.height()) + _pathGridMargins, _pathGridMargins);
+//    initCollisions(QPoint(_centerArea.x(), _centerArea.y()));
     initCollisions();
 
     int fromWorldX, fromWorldY, toWorldX, toWorldY;
@@ -48,124 +95,57 @@ void PathFinderCalculator::buildPath2d() {
     getWorldCoordinate(_pointTo2d.x(), _pointTo2d.y(), toWorldX, toWorldY);
 
     auto path = _generator.findPath({fromWorldX, fromWorldY}, {toWorldX, toWorldY});
-    std::reverse(path.begin(), path.end());
-
-    size_t pointIndex = 0;
-    while (pointIndex < path.size()) {
-        if ((pointIndex == 0) && (path.front().x == fromWorldX) && (path.front().y == fromWorldY)) {
-            _path2d.append(_pointFrom2d);
-        } else if ((pointIndex == (path.size() - 1)) && (path.back().x == toWorldX) && (path.back().y == toWorldY)) {
-            _path2d.append(_pointTo2d);
-        } else {
-            auto point = path[pointIndex];
-            double x, y;
-            worldCellLeftBottomCoordinate(point.x, point.y, x, y);
-            x += _gridSize / 2.0;
-            y += _gridSize / 2.0;
-            _path2d.append({x, y});
-        }
-        pointIndex++;
+    for(const auto& p: path){
+        _path2d.append(QPointF(p.x * _scaleX/* + _centerArea.x()*/, p.y * _scaleY /*+ _centerArea.y()*/));
     }
-}
-
-bool PathFinderCalculator::isIntersect(const QPointF &p1, const QPointF &p2) {
-    bool intersected = false;
-
-    QPolygonF line;
-    line.append(p1);
-    line.append(p2);
-
-    for (int itemIndex = 0; !intersected && (itemIndex < _obstacles2d.count()); itemIndex++) {
-        QPolygonF polygon = _obstacles2d[itemIndex];
-        intersected = polygon.intersects(line);
-    }
-
-    return intersected;
-}
-
-void PathFinderCalculator::initGenerator() {
-    _generator.setWorldSize(getWorldSize());
-    _generator.setHeuristic(AStar::Heuristic::euclidean);
-    _generator.setDiagonalMovement(false);
-}
-
-AStar::Vec2i PathFinderCalculator::getWorldSize() {
-    double xMax = std::max(_pointFrom2d.x(), _pointTo2d.x());
-    double yMax = std::max(_pointFrom2d.y(), _pointTo2d.y());
-
-    for (int itemIndex = 0; itemIndex < _obstacles2d.count(); itemIndex++) {
-        QPolygonF polygon = _obstacles2d[itemIndex];
-        double polygonXMin, polygonXMax, polygonYMin, polygonYMax;
-        getPolygonBoundary(polygon, polygonXMin, polygonYMin, polygonXMax, polygonYMax);
-        xMax = std::max(xMax, polygonXMax);
-        yMax = std::max(yMax, polygonYMax);
-    }
-
-    AStar::Vec2i result{(int) std::floor(xMax / _gridSize) + 1 + 2 * _worldOffset, (int) std::floor(yMax / _gridSize) + 1 + 2 * _worldOffset};
-
-    return result;
-}
-
-void PathFinderCalculator::getPolygonBoundary(const QPolygonF &polygon, double &xMin, double &yMin, double &xMax, double &yMax) {
-    xMin = polygon.value(0).x();
-    yMin = polygon.value(0).y();
-    xMax = polygon.value(0).x();
-    yMax = polygon.value(0).y();
-
-    for (int pointIndex = 0; pointIndex < polygon.count(); pointIndex++) {
-        QPointF point = polygon.value(pointIndex);
-        if (point.x() < xMin) {
-            xMin = point.x();
-        }
-        if (point.y() < yMin) {
-            yMin = point.y();
-        }
-        if (xMax < point.x()) {
-            xMax = point.x();
-        }
-        if (yMax < point.y()) {
-            yMax = point.y();
-        }
-    }
-}
-
-void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, int &yWorld) {
-    xWorld = std::floor(x / _gridSize) + _worldOffset;
-    yWorld = std::floor(y / _gridSize) + _worldOffset;
-}
-
-void PathFinderCalculator::worldCellLeftBottomCoordinate(int xWorld, int yWorld, double &x, double &y) {
-    x = ((double) (xWorld - _worldOffset)) * _gridSize;
-    y = ((double) (yWorld - _worldOffset)) * _gridSize;
 }
 
 void PathFinderCalculator::initCollisions() {
-    for (int polygonIndex = 0; polygonIndex < _obstacles2d.count(); polygonIndex++) {
-        QPolygonF polygon = _obstacles2d[polygonIndex];
-        double polygonXMin, polygonYMin, polygonXMax, polygonYMax;
-        getPolygonBoundary(polygon, polygonXMin, polygonYMin, polygonXMax, polygonYMax);
-        int worldXMin, worldYMin, worldXMax, worldYMax;
-        getWorldCoordinate(polygonXMin, polygonYMin, worldXMin, worldYMin);
-        getWorldCoordinate(polygonXMax, polygonYMax, worldXMax, worldYMax);
-        for (int worldX = worldXMin; worldX <= worldXMax; worldX++) {
-            for (int worldY = worldYMin; worldY <= worldYMax; worldY++) {
-                double xMin, yMin, xMax, yMax;
-                worldCellLeftBottomCoordinate(worldX, worldY, xMin, yMin);
-                xMax = xMin + _gridSize;
-                yMax = yMin + _gridSize;
-                QPolygonF collisionCell;
-                collisionCell.append({xMin, yMin});
-                collisionCell.append({xMin, yMax});
-                collisionCell.append({xMax, yMax});
-                collisionCell.append({xMax, yMin});
-                collisionCell.append({xMin, yMin});
-                if (polygon.intersects(collisionCell)) {
-                    _generator.addCollision({worldX, worldY});
-                }
+    QList<QPoint> temp = {};
+    double step = 1 / _pathGridMargins;
+    for(const auto & obst: _obstacles2d){
+        for(int i = 0; i < obst.count(); ++i){
+            QLineF buff = QLineF(obst[i], obst[(i+1)%obst.count()]);
+            for(double j = 0; j <= 1; j+=step){
+                auto res = buff.pointAt(j);
+                QPoint resI = QPoint(res.x(), res.y());
+                if(!temp.contains(resI))
+                    temp.append(resI);
             }
+        }
+        for(const auto& currP:temp){
+            int x = currP.x() / _scaleX;
+            int y = currP.y() / _scaleY;
+            _generator.addCollision({x, y});
         }
     }
 }
+
+void PathFinderCalculator::initCollisions(const QPoint& centerArea) {
+    QList<QPoint> temp = {};
+    double step = 1 / _pathGridMargins;
+    for(const auto & obst: _obstacles2d){
+        for(int i = 0; i < obst.count(); ++i){
+            QLineF buff = QLineF(obst[i], obst[(i+1)%obst.count()]);
+            for(double j = 0; j <= 1; j+=step){
+                auto res = buff.pointAt(j);
+                QPoint resI = QPoint(res.x(), res.y()) - centerArea;
+                if(!temp.contains(resI))
+                    temp.append(resI);
+            }
+        }
+        for(const auto& currP:temp){
+            int x = currP.x() / _scaleX;
+            int y = currP.y() / _scaleY;
+            _generator.addCollision({x, y});
+        }
+    }
+}
+
+QList<QPointF> PathFinderCalculator::getPath2d() {
+    return _path2d.toList();
+}
+
 
 void PathFinderCalculator::simplifyPath2dByIntersect() {
     QPolygonF newPath;
@@ -185,6 +165,17 @@ void PathFinderCalculator::simplifyPath2dByIntersect() {
     _path2d = newPath;
 }
 
-QList<QPointF> PathFinderCalculator::getPath2d() {
-    return _path2d.toList();
+bool PathFinderCalculator::isIntersect(const QPointF &p1, const QPointF &p2) {
+    bool intersected = false;
+
+    QPolygonF line;
+    line.append(p1);
+    line.append(p2);
+
+    for (int itemIndex = 0; !intersected && (itemIndex < _obstacles2d.count()); itemIndex++) {
+        QPolygonF polygon = _obstacles2d[itemIndex];
+        intersected = polygon.intersects(line);
+    }
+
+    return intersected;
 }

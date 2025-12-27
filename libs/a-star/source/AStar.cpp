@@ -1,10 +1,7 @@
 #include <iostream>
-#include <vector>
-#include <algorithm>
-#include <cmath>
-#include <map>
-#include <memory>
 #include "AStar.hpp"
+
+using namespace AStar;
 
 bool AStar::Vec2i::operator == (const Vec2i& coordinates_) const {
     return (x == coordinates_.x && y == coordinates_.y);
