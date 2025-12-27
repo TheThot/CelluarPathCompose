@@ -1,6 +1,6 @@
 #include "AStar.hpp"
 #include <algorithm>
-#include <cmath>
+#include <math.h>
 
 using namespace std::placeholders;
 
@@ -26,8 +26,8 @@ AStar::Generator::Generator()
     setDiagonalMovement(false);
     setHeuristic(&Heuristic::manhattan);
     direction = {
-        { 0, 1 }, { 1, 0 }, { 0, -1 }, { -1, 0 },
-        { -1, -1 }, { 1, 1 }, { -1, 1 }, { 1, -1 }
+            { 0, 1 }, { 1, 0 }, { 0, -1 }, { -1, 0 },
+            { -1, -1 }, { 1, 1 }, { -1, 1 }, { 1, -1 }
     };
 }
 
@@ -72,9 +72,6 @@ AStar::CoordinateList AStar::Generator::findPath(Vec2i source_, Vec2i target_)
     closedSet.reserve(100);
     openSet.push_back(new Node(source_));
 
-    std::map<long, long> wallsMap;
-    buildWallsMap(wallsMap);
-
     while (!openSet.empty()) {
         auto current_it = openSet.begin();
         current = *current_it;
@@ -96,7 +93,7 @@ AStar::CoordinateList AStar::Generator::findPath(Vec2i source_, Vec2i target_)
 
         for (uint i = 0; i < directions; ++i) {
             Vec2i newCoordinates(current->coordinates + direction[i]);
-            if (detectCollision(wallsMap, newCoordinates) ||
+            if (detectCollision(newCoordinates) ||
                 findNodeOnList(closedSet, newCoordinates)) {
                 continue;
             }
@@ -147,31 +144,14 @@ void AStar::Generator::releaseNodes(NodeSet& nodes_)
     }
 }
 
-void AStar::Generator::buildWallsMap(std::map<long, long>& wallsMap) {
-    wallsMap.clear();
-    for(auto coordinate:walls) {
-        long mapIndex = coordinateToMapIndex(coordinate);
-        wallsMap.insert({mapIndex, mapIndex});
-    }
-}
-
-long AStar::Generator::coordinateToMapIndex(Vec2i coordinates_) {
-    long a = coordinates_.x;
-    long b = coordinates_.y;
-    long hash = (a >= b) ? (a * a + a + b) : (a + b * b);  // Szudzik's pairing function
-    return hash;
-}
-
-bool AStar::Generator::detectCollision(const std::map<long, long>& wallsMap, Vec2i coordinates_)
+bool AStar::Generator::detectCollision(Vec2i coordinates_)
 {
     if (coordinates_.x < 0 || coordinates_.x >= worldSize.x ||
-        coordinates_.y < 0 || coordinates_.y >= worldSize.y) {
+        coordinates_.y < 0 || coordinates_.y >= worldSize.y ||
+        std::find(walls.begin(), walls.end(), coordinates_) != walls.end()) {
         return true;
     }
-
-    long mapIndex = coordinateToMapIndex(coordinates_);
-    auto it = wallsMap.find(mapIndex);
-    return it != wallsMap.end();
+    return false;
 }
 
 AStar::Vec2i AStar::Heuristic::getDelta(Vec2i source_, Vec2i target_)

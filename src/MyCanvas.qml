@@ -1,4 +1,4 @@
-import QtQuick 2.15
+import QtQuick 2.0
 
 Canvas {
     id: _root
@@ -11,6 +11,11 @@ Canvas {
     property real scaleFactor: Math.min(width / 600, height / 500)
     property real offsetX: (width - 600 * scaleFactor) / 2
     property real offsetY: (height - 500 * scaleFactor) / 2
+
+    Component.onCompleted: {
+        console.log("Available fonts:", Qt.fontFamilies());
+        // Выберите подходящий шрифт из списка
+    }
 
     onPaint: {
         var ctx = getContext("2d")
@@ -71,7 +76,7 @@ Canvas {
         ctx.stroke()
 
         ctx.fillStyle = "red"
-        ctx.font = "16px Arial"
+        ctx.font = "16px Sans Serif"
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
         ctx.fillText("S", pointS.x, pointS.y)
@@ -214,7 +219,7 @@ Canvas {
         ctx.restore()
 
         ctx.fillStyle = "#7f8c8d"
-        ctx.font = "bold 12px Arial"
+        ctx.font = "bold 12px Sans Serif"
         ctx.textAlign = "center"
         ctx.fillText("Sweep Line: " + angle.toFixed(1) + "°",
             centerX + Math.cos(angle * Math.PI / 180) * 70,
@@ -279,7 +284,7 @@ Canvas {
         centerY /= cell.points.length
 
         ctx.fillStyle = "#33B5E5"
-        ctx.font = "10px Arial"
+        ctx.font = "10px Sans Serif"
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
         ctx.fillText(cell.area.toFixed(1), centerX, centerY)

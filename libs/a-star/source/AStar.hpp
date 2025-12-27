@@ -9,7 +9,6 @@
 #include <vector>
 #include <functional>
 #include <set>
-#include <map>
 
 namespace AStar
 {
@@ -41,9 +40,7 @@ namespace AStar
 
     class Generator
     {
-        void buildWallsMap(std::map<long, long>& wallsMap);
-        long coordinateToMapIndex(Vec2i coordinates_);
-        bool detectCollision(const std::map<long, long>& wallsMap, Vec2i coordinates_);
+        bool detectCollision(Vec2i coordinates_);
         Node* findNodeOnList(NodeSet& nodes_, Vec2i coordinates_);
         void releaseNodes(NodeSet& nodes_);
 

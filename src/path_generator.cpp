@@ -554,7 +554,7 @@ int PathGenerator::goTroughtHoleDirectProc(QVector<int>& holesNumStack, QList<QL
     bool triggerRule = true;
     int revers = -1;
     int skeepRowNums = 0;
-
+QLineF testL;
     int sum = 0;
     auto lastAdd = res.last()[1];
     for(int k = 0; k < 2; ++k) {
@@ -563,9 +563,14 @@ int PathGenerator::goTroughtHoleDirectProc(QVector<int>& holesNumStack, QList<QL
         for(int i = k; i < currList.count(); ++i){
             QList<QPointF> buffL;
             for (const auto &curr: currList[i]) {
-                pfc->perform(lastAdd, curr.first);
-                buffL.append(pfc->getPath2d());
-                buffL.append(curr.first); // точка прилегающая к зоне или это граница survPoly
+                testL = QLineF{lastAdd, curr.first};
+                testL = extendLineBothWays(testL, 2);
+                pfc->perform(testL.p1(), testL.p2());
+                auto pathBuff = pfc->getPath2d();
+//                pathBuff = uniformSample(pathBuff,4);
+                buffL.append(pathBuff);
+                res.append(buffL);
+                return 0;
                 if (curr.second != 0) {  // другая точка сообщает есть ли рядом другие зоны
                     if(!holesNumStack.contains((-1) * curr.second) || !holesNumStack.contains(curr.second)) {
                         holesNumStack.push_back(curr.second);
@@ -614,7 +619,8 @@ QList<QList<QPointF>> PathGenerator::_pathProcRespectInnerHoles()
                     res.append(buffL);
                     //по выходу с рекурсии корректируем счётчик внешнего цикла i (так как много строк связанных с holes добавлено функцией)
                     i += goTroughtHoleDirectProc(_holesNumStack, res); // уходим в рекурсию
-                    break;
+                    //break;
+                    return res;
                 }
             }
             ++rowI;

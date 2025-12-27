@@ -113,4 +113,5 @@ private:
 
     PathFinderCalculator *pfc;
 };
+
 #endif //TRYCELLUARPATHCOMPOSE_PATH_GENERATOR_H

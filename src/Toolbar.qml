@@ -1,6 +1,6 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick 2.0
+import QtQuick.Controls 2.0
+import QtQuick.Layouts 1.0
 
 // Панель инструментов
 Rectangle {
@@ -58,7 +58,7 @@ Rectangle {
 
         Column {
             spacing: 0
-            padding: 0
+            // padding: 0
             ButtonGroup {
                 id: polySetup
                 onClicked: {
@@ -75,9 +75,9 @@ Rectangle {
                     text: "Simpl poly"
                     font.pixelSize: 14
                     color: "white"
-                    horizontalAlignment: Text.AlignLeft
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: 30
+                    anchors.left: parent.left
+                    anchors.leftMargin: 30  // Отступ слева
+                    anchors.verticalCenter: parent.verticalCenter
                 }
             }
             RadioButton {
@@ -88,9 +88,9 @@ Rectangle {
                     text: "Poly with holes"
                     font.pixelSize: 14
                     color: "white"
-                    horizontalAlignment: Text.AlignLeft
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: 30
+                    anchors.left: parent.left
+                    anchors.leftMargin: 30  // Отступ слева
+                    anchors.verticalCenter: parent.verticalCenter
                 }
             }
             Component.onCompleted: {
@@ -176,7 +176,7 @@ Rectangle {
                     text: showDecompositionCheck.text
                     color: "white"
                     font.pixelSize: 14
-                    leftPadding: showDecompositionCheck.indicator.width + 10
+                    x: showDecompositionCheck.indicator.width + 10
                 }
             }
 
@@ -189,7 +189,7 @@ Rectangle {
                     text: showOrientedRectCheck.text
                     color: "white"
                     font.pixelSize: 14
-                    leftPadding: showOrientedRectCheck.indicator.width + 10
+                    x: showOrientedRectCheck.indicator.width + 10
                 }
             }
 
@@ -201,7 +201,7 @@ Rectangle {
                     text: showPathCoverageCheck.text
                     color: "white"
                     font.pixelSize: 14
-                    leftPadding: showPathCoverageCheck.indicator.width + 10
+                    x: showPathCoverageCheck.indicator.width + 10
                 }
             }
         }

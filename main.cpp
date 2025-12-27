@@ -8,6 +8,7 @@ int main(int argc, char *argv[]) {
 
     // Регистрируем C++ класс в QML
     qmlRegisterType<Decomposer>("Decomposer", 1, 0, "Decomposer");
+    qRegisterMetaType<PathGenerator*>();
 
     QQmlApplicationEngine engine;
     engine.load(QUrl("qrc:/qml/main.qml"));

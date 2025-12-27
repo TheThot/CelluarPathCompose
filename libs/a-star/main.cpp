@@ -6,7 +6,7 @@ int main()
     AStar::Generator generator;
     generator.setWorldSize({25, 25});
     generator.setHeuristic(AStar::Heuristic::euclidean);
-    generator.setDiagonalMovement(true);
+    generator.setDiagonalMovement(false);
 
     std::cout << "Generate path ... \n";
     auto path = generator.findPath({0, 0}, {20, 20});

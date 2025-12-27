@@ -8,7 +8,7 @@
 #include <cmath>
 #include <QPointF>
 #include <QPolygonF>
-#include <QLineF>
+#include <QtCore/QLineF>
 #include <QHash>
 #include <QList>
 #include <QPair>
@@ -32,7 +32,7 @@ namespace baseFunc {
                 QLineF polygonEdge(polygon[i], polygon[(i+1) % polygon.count()]);
                 QPointF intersectPoint;
 
-                if (line.intersects(polygonEdge, &intersectPoint) == QLineF::BoundedIntersection) {
+                if (line.intersect(polygonEdge, &intersectPoint) == QLineF::BoundedIntersection) {
                     if (!intersections.contains(intersectPoint))
                         intersections.append(intersectPoint);
                 }
@@ -113,12 +113,12 @@ namespace baseFunc {
                 intersections_list.append(resIntersection);
     }*/
 
-    static bool intersectionListFormimgRoutine(const QLineF& l1, const QLineF& l2, QList<QPointF>& intersections_list, QLineF::IntersectionType foundingType,
+    static bool intersectionListFormimgRoutine(const QLineF& l1, const QLineF& l2, QList<QPointF>& intersections_list, int foundingType,
                                         uint64_t maxBoundSurvPolyRad = 1e3)
     {
         // на случай QLineF::UnboundedIntersection ограничиваем возможные пересечения за пределами области определения линий самым большим размером = max(SurvPolyBoundRect)
         QPointF resIntersection{0,0};
-        QLineF::IntersectionType flag = l1.intersects(l2, &resIntersection);
+        int flag = l1.intersect(l2, &resIntersection);
 
         if(flag != 0) // берём l2 в условие потому что это линия должна быть со структуры полигона with holes
             if(static_cast<uint64_t>(QLineF(l2.p1(), resIntersection).length()) > maxBoundSurvPolyRad)
@@ -266,12 +266,43 @@ namespace baseFunc {
 
         auto approxToPrecise = QLineF{coord - unitNormal * length, coord + unitNormal * length};
         QPointF preciseP;
-        parall1.intersects(approxToPrecise, &preciseP);
+        parall1.intersect(approxToPrecise, &preciseP);
         approxToPrecise.setP1(preciseP);
-        parall2.intersects(approxToPrecise, &preciseP);
+        parall2.intersect(approxToPrecise, &preciseP);
         approxToPrecise.setP2(preciseP);
         return approxToPrecise;
 
+    }
+
+    // Равномерная выборка точек с фиксированным шагом
+    static QList<QPointF> uniformSample(const QList<QPointF>& points,
+                                        int targetCount) {
+        if (points.size() <= targetCount) return points;
+
+        QList<QPointF> result;
+        double step = static_cast<double>(points.size() - 1) / (targetCount - 1);
+
+        for (int i = 0; i < targetCount; i++) {
+            double index = i * step;
+            int idx1 = static_cast<int>(index);
+            double fraction = index - idx1;
+
+            if (idx1 == points.size() - 1) {
+                result.append(points.last());
+            } else {
+                // Линейная интерполяция между точками
+                QPointF p1 = points[idx1];
+                QPointF p2 = points[idx1 + 1];
+
+                QPointF interpolated(
+                        p1.x() + fraction * (p2.x() - p1.x()),
+                        p1.y() + fraction * (p2.y() - p1.y())
+                );
+                result.append(interpolated);
+            }
+        }
+
+        return result;
     }
 
 }

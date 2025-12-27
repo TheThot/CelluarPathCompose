@@ -3,7 +3,7 @@
 #include <cmath>
 #include <QLineF>
 
-const double PathFinderCalculator::_gridSize = 20.0;
+const double PathFinderCalculator::_gridSize = 3;
 const int PathFinderCalculator::_worldOffset = 0;
 
 PathFinderCalculator::PathFinderCalculator() {
@@ -28,7 +28,7 @@ void PathFinderCalculator::perform(const QPointF &pointFrom, const QPointF &poin
     _pointFrom2d = pointFrom;
     _pointTo2d = pointTo;
     buildPath2d();
-//    simplifyPath2dByIntersect();
+    simplifyPath2dByIntersect();
 }
 
 void PathFinderCalculator::clear() {
@@ -85,8 +85,8 @@ bool PathFinderCalculator::isIntersect(const QPointF &p1, const QPointF &p2) {
 
 void PathFinderCalculator::initGenerator() {
     _generator.setWorldSize(getWorldSize());
-    _generator.setHeuristic(AStar::Heuristic::octagonal);
-    _generator.setDiagonalMovement(true);
+    _generator.setHeuristic(AStar::Heuristic::euclidean);
+    _generator.setDiagonalMovement(false);
 }
 
 AStar::Vec2i PathFinderCalculator::getWorldSize() {

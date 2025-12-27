@@ -186,7 +186,7 @@ void Decomposer::updateDecomposition() {
 
     // Выполняем трапецоидальную декомпозицию
     std::vector<QPolygonF> cells = trapezoidalDecomposition(m_originalPolygon, m_sweepAngle);
-    m_decompositionCells = QVector<QPolygonF>(cells.begin(), cells.end());
+    m_decompositionCells = QVector<QPolygonF>::fromStdVector(cells);
 
     // Выполняем бустрофедон декомпозицию
     m_bpd_decompositionCells = boustrophedonDecomposition_compact(m_originalPolygon, m_holes, m_mapOriendtedHoleRectLines, m_sweepAngle);
@@ -374,7 +374,7 @@ void Decomposer::newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap
         int k = (i + 1) % size;
         auto orntL_i = static_cast<OrientedLine>(i);
         auto orntL_k = static_cast<OrientedLine>(k);
-        inMap[orntL_i].intersects(inMap[orntL_k],
+        inMap[orntL_i].intersect(inMap[orntL_k],
                                   &orientRectOverHole[static_cast<OrientPointNames>(k)]);
     }
 
