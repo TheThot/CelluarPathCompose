@@ -44,9 +44,13 @@ private:
 
     void initCollisions(const QPoint& centerArea);
     void initCollisions();
+    void initCollisions(const QRectF& area);
 
     void simplifyPath2dByIntersect();
     bool isIntersect(const QPointF &p1, const QPointF &p2);
 
     void getWorldCoordinate(double x, double y, int &xWorld, int &yWorld);
+    void getWorldCoordinate(double x, double y, int &xWorld, int &yWorld, const QRectF& iniArea);
+    QPointF backsideCoordConversion(int xWorld, int yWorld);
+    QPointF backsideCoordConversion(int xWorld, int yWorld, const QRectF& iniArea);
 };

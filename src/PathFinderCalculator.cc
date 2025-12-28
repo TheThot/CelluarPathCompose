@@ -1,6 +1,8 @@
 #include "PathFinderCalculator.h"
 #include <QDebug>
 #include <cmath>
+#include <iostream>
+#include <ostream>
 #include <QLineF>
 
 PathFinderCalculator::PathFinderCalculator() {
@@ -72,6 +74,22 @@ void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, i
     yWorld = std::floor(y / _scaleY);
 }
 
+void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, int &yWorld, const QRectF& iniArea) {
+    xWorld = std::floor(( x - iniArea.bottomLeft().x() ) / _scaleX);
+    yWorld = std::floor((y - iniArea.bottomLeft().y() ) / _scaleY);
+}
+
+
+QPointF PathFinderCalculator::backsideCoordConversion(int xWorld, int yWorld)
+{
+    return QPointF(xWorld * _scaleX, yWorld * _scaleY);
+}
+
+QPointF PathFinderCalculator::backsideCoordConversion(int xWorld, int yWorld, const QRectF& iniArea)
+{
+    return QPointF(xWorld * _scaleX + iniArea.bottomLeft().x(), yWorld * _scaleY + iniArea.bottomLeft().y());
+}
+
 void PathFinderCalculator::buildPath2d() {
     /*if(isEqual(_pointFrom2d, _pointTo2d))
         return;*/
@@ -85,18 +103,48 @@ void PathFinderCalculator::buildPath2d() {
 
     _centerArea = pathBounds.center();
 
-    initGenerator(_wrldX, _wrldY, _pathGridMargins);
-//    initGenerator(std::abs(pathBounds.width()) + _pathGridMargins, std::abs(pathBounds.height()) + _pathGridMargins, _pathGridMargins);
+    // initGenerator(_wrldX, _wrldY, _pathGridMargins);
+    initGenerator(std::abs(pathBounds.width()), std::abs(pathBounds.height()), _pathGridMargins);
 //    initCollisions(QPoint(_centerArea.x(), _centerArea.y()));
-    initCollisions();
+    // initCollisions();
+    initCollisions(pathBounds);
 
     int fromWorldX, fromWorldY, toWorldX, toWorldY;
-    getWorldCoordinate(_pointFrom2d.x(), _pointFrom2d.y(), fromWorldX, fromWorldY);
-    getWorldCoordinate(_pointTo2d.x(), _pointTo2d.y(), toWorldX, toWorldY);
+    /*getWorldCoordinate(_pointFrom2d.x(), _pointFrom2d.y(), fromWorldX, fromWorldY);
+    getWorldCoordinate(_pointTo2d.x(), _pointTo2d.y(), toWorldX, toWorldY);*/
+    getWorldCoordinate(_pointFrom2d.x(), _pointFrom2d.y(), fromWorldX, fromWorldY, pathBounds);
+    getWorldCoordinate(_pointTo2d.x(), _pointTo2d.y(), toWorldX, toWorldY, pathBounds);
 
     auto path = _generator.findPath({fromWorldX, fromWorldY}, {toWorldX, toWorldY});
+    // QList<QPointF> pathPoints;
     for(const auto& p: path){
-        _path2d.append(QPointF(p.x * _scaleX/* + _centerArea.x()*/, p.y * _scaleY /*+ _centerArea.y()*/));
+        _path2d.append(backsideCoordConversion(p.x, p.y, pathBounds));
+        // std::cout << pathPoints.last().x() << ", " << pathPoints.last().y() << std::endl;
+        // _path2d.append(QPointF(p.x * _scaleX/* + _centerArea.x()*/, p.y * _scaleY /*+ _centerArea.y()*/));
+    }
+    //_path2d std::movepathPoints;
+}
+
+void PathFinderCalculator::initCollisions(const QRectF& area) {
+    QList<QPoint> temp = {};
+    double step = 1e-3;
+    int xWrld, yWrld;
+    for(const auto & obst: _obstacles2d){
+        for(int i = 0; i < obst.count(); ++i){
+            QLineF buff = QLineF(obst[i], obst[(i+1)%obst.count()]);
+            for(double j = 0; j <= 1; j+=step){
+                auto res = buff.pointAt(j);
+                if(area.contains(res)){
+                    getWorldCoordinate(res.x(), res.y(), xWrld, yWrld, area);
+                    QPoint resI = QPoint(xWrld, yWrld);
+                    if(!temp.contains(resI))
+                        temp.append(resI);
+                }
+            }
+        }
+        for(const auto& currP:temp){
+            _generator.addCollision({currP.x(), currP.y()});
+        }
     }
 }
 
