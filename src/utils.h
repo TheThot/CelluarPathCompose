@@ -20,6 +20,71 @@ struct holesInfoIn{
 
 namespace baseFunc {
 
+    static double lineEquationKoeff(const QPointF& p1, const QPointF& p2){
+        double res;
+        res = (p2.x() - p1.x()) / (p2.y() + p1.y());
+        return res;
+    }
+
+    //проверка на направление вращения полигона true - clockwise; false - counter-clockwise
+    static bool isPolyInClockwiseMannerRot(const QPointF* polygonPoints, uint size){
+        if (size < 3) {
+            // Для полигона нужно минимум 3 точки
+            return false;
+        }
+
+        double sum = 0;
+        for (int i = 0; i < size; i++){
+            const QPointF& p1 = polygonPoints[i];
+            const QPointF& p2 = polygonPoints[(i + 1) % size];
+            sum += lineEquationKoeff(p1, p2);
+        }
+        bool res = sum > 0;
+        return res;
+    }
+
+    static int _updateCellRule(const QList<QPolygonF>* _holes, const QList<QPolygonF>* _bpd_decompositionCells){
+        int rule = 0;
+
+        if(_holes == nullptr){
+            return rule;
+        }
+
+        // первые holes.count * 2 _bpd_decompositionCells это U и D каждой Cell
+
+        QList<QPolygonF> check;
+        for(int i = 0; i < _holes->count() * 2; ++i){
+            check.append(_bpd_decompositionCells->at(i));
+        }
+        QList<QPolygonF> check2;
+        for(int i = 0; i < _holes->count() * 2; i+=2){
+            check2.append(check[i].united(check[i+1]));
+        }
+        QList<double> squareHolesSection;
+        for(int i = 0; i < check2.count(); ++i) {
+            squareHolesSection.append(check2[i].boundingRect().height()*check2[i].boundingRect().width());
+        }
+        double sumSq = 0;
+        double min = 1e10;
+        for(int i = 0; i < check2.count(); ++i) {
+            if(min > squareHolesSection[i])
+                min = squareHolesSection[i];
+            sumSq += squareHolesSection[i];
+        }
+        QPolygonF whole;
+        for(int i = 0; i < check2.count()-1; ++i) {
+            if(i == 0)
+                whole = check2[i].intersected(check2[i+1]);
+            else
+                whole = whole.intersected(check2[i+1]);
+        }
+        double squareWhole = whole.boundingRect().width()*whole.boundingRect().height();
+
+        rule = (squareWhole == 0) ? 0 : (squareWhole < min) ? 1 : 2; // squareWhole == min входит в 2
+
+        return rule;
+    }
+
     static void intersectLinesWithPolygon(const QList<QLineF>& lineList, const QPolygonF& polygon, QList<QLineF>& resultLines)
     {
         resultLines.clear();
@@ -177,29 +242,6 @@ namespace baseFunc {
                   });
 
         return polygon;
-    }
-
-    static double lineEquationKoeff(const QPointF& p1, const QPointF& p2){
-        double res;
-        res = (p2.x() - p1.x()) / (p2.y() + p1.y());
-        return res;
-    }
-
-    //проверка на направление вращения полигона true - clockwise; false - counter-clockwise
-    static bool isPolyInClockwiseMannerRot(const QPointF* polygonPoints, uint size){
-        if (size < 3) {
-            // Для полигона нужно минимум 3 точки
-            return false;
-        }
-
-        double sum = 0;
-        for (int i = 0; i < size; i++){
-            const QPointF& p1 = polygonPoints[i];
-            const QPointF& p2 = polygonPoints[(i + 1) % size];
-            sum += lineEquationKoeff(p1, p2);
-        }
-        bool res = sum > 0;
-        return res;
     }
 
     //проверка лежит ли точка на прямой

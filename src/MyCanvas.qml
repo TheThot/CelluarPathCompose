@@ -76,7 +76,7 @@ Canvas {
         ctx.stroke()
 
         ctx.fillStyle = "red"
-        ctx.font = "16px Sans Serif"
+        ctx.font = "16px Arial"
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
         ctx.fillText("S", pointS.x, pointS.y)
@@ -219,7 +219,7 @@ Canvas {
         ctx.restore()
 
         ctx.fillStyle = "#7f8c8d"
-        ctx.font = "bold 12px Sans Serif"
+        ctx.font = "bold 12px Arial"
         ctx.textAlign = "center"
         ctx.fillText("Sweep Line: " + angle.toFixed(1) + "°",
             centerX + Math.cos(angle * Math.PI / 180) * 70,
@@ -284,7 +284,7 @@ Canvas {
         centerY /= cell.points.length
 
         ctx.fillStyle = "#33B5E5"
-        ctx.font = "10px Sans Serif"
+        ctx.font = "10px Arial"
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
         ctx.fillText(cell.area.toFixed(1), centerX, centerY)

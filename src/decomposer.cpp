@@ -189,8 +189,8 @@ void Decomposer::updateDecomposition() {
     m_decompositionCells = QVector<QPolygonF>::fromStdVector(cells);
 
     // Выполняем бустрофедон декомпозицию
-    m_bpd_decompositionCells = boustrophedonDecomposition_compact(m_originalPolygon, m_holes, m_mapOriendtedHoleRectLines, m_sweepAngle);
-
+//    m_bpd_decompositionCells = boustrophedonDecomposition_compact(m_originalPolygon, m_holes, m_mapOriendtedHoleRectLines, m_sweepAngle);
+    m_bpd_decompositionCells = boustrophedonDecomposition(m_originalPolygon, m_holes, m_mapOriendtedHoleRectLines, m_sweepAngle);
     feedHolesInfoIn();
 
     _transects->setPolyBoundary(m_orientedRect);
@@ -460,7 +460,7 @@ void Decomposer::iniAllAlliasBCD(int size, QList<QMap<OrientedLine, QLineF>>& co
 // реализация деления полигона с отверстиями на зоны
 // задел для path construcion алгоритма туда-обратно
 QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF& polygon, const QList<QPolygonF>& holes,
-                                                                const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
+                                                                QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
                                                                 double sweepAngle)
 {
     QList<QPolygonF> resCells;
@@ -632,14 +632,105 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
             {
                 buff.append(currP);
             }
-            buff = sortPolygonClockwise(buff);
+//            buff = sortPolygonClockwise(buff);
             resCells.append(biggerThanPoly);
         }
     };
     lambdaBetwenes(copy, polygon, resCells, false);
     lambdaBetwenes(copy, polygon, resCells, true);
 
+    mapOriendtedHoleRectLines = copy;
+
     return resCells;
+}
+
+bool Decomposer::updateOrientedLine3(QList<QMap<OrientedLine, QLineF>>& inMap){
+    QList<QPointF> intersections;
+    auto currParr = inMap[1][OrientedLine::ParallelSweepL];
+    // проверяем пересечения для линий ParallelSweepL и ParallelSweepR из mapOriendtedHoleRectLines до новых возможных границ c Holes
+    for(int j = 0; j < inMap.count(); ++j){
+        if(j != 1) {
+            intersectionListFormimgRoutine(currParr, inMap[j][OrientedLine::PerpendiclSweepD], intersections,
+                                           QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+        }
+    }
+    if(intersections.count() == 0)
+        return false;
+    inMap[0][OrientedLine::PerpendiclSweepU].setP2(intersections[0]);
+    intersections.clear();
+    currParr = inMap[0][OrientedLine::ParallelSweepR];
+    // проверяем пересечения для линий ParallelSweepL и ParallelSweepR из mapOriendtedHoleRectLines до новых возможных границ c Holes
+    for(int j = 0; j < inMap.count(); ++j){
+        if(j != 0) {
+            intersectionListFormimgRoutine(currParr, inMap[j][OrientedLine::PerpendiclSweepU], intersections,
+                                           QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+        }
+    }
+    inMap[1][OrientedLine::PerpendiclSweepD].setP1(intersections[0]);
+
+    inMap[0][OrientedLine::ParallelSweepR].setP2(inMap[1][OrientedLine::ParallelSweepL].p2());
+    inMap[1][OrientedLine::ParallelSweepL].setP1(inMap[0][OrientedLine::ParallelSweepR].p1());
+    return true;
+}
+
+bool Decomposer::updateOrientedLine1(QList<QMap<OrientedLine, QLineF>>& inMap){
+    QList<QPointF> intersections;
+    auto currParr = inMap[0][OrientedLine::ParallelSweepL];
+    // проверяем пересечения для линий ParallelSweepL и ParallelSweepR из mapOriendtedHoleRectLines до новых возможных границ c Holes
+    for(int j = 0; j < inMap.count(); ++j){
+        if(j != 0) {
+            intersectionListFormimgRoutine(currParr, inMap[j][OrientedLine::PerpendiclSweepD], intersections,
+                                           QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+        }
+    }
+    if(intersections.count() == 0)
+        return false;
+    inMap[1][OrientedLine::PerpendiclSweepD].setP2(intersections[0]);
+    intersections.clear();
+    currParr = inMap[1][OrientedLine::ParallelSweepR];
+    // проверяем пересечения для линий ParallelSweepL и ParallelSweepR из mapOriendtedHoleRectLines до новых возможных границ c Holes
+    for(int j = 0; j < inMap.count(); ++j){
+        if(j != 1) {
+            intersectionListFormimgRoutine(currParr, inMap[j][OrientedLine::PerpendiclSweepU], intersections,
+                                           QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+        }
+    }
+    inMap[0][OrientedLine::PerpendiclSweepU].setP1(intersections[0]);
+
+    inMap[1][OrientedLine::ParallelSweepR].setP1(inMap[0][OrientedLine::ParallelSweepL].p1());
+    inMap[0][OrientedLine::ParallelSweepL].setP2(inMap[1][OrientedLine::ParallelSweepR].p2());
+    return true;
+}
+
+void Decomposer::updateOrientedLine2(QList<QMap<OrientedLine, QLineF>>& inMap){
+    for(int i = 0; i < inMap.count(); ++i){
+        QList<QPointF> intersectionsR;
+        QList<QPointF> intersectionsL;
+        auto currParrR = inMap[i][OrientedLine::ParallelSweepR];
+        auto currParrL = inMap[i][OrientedLine::ParallelSweepL];
+        // проверяем пересечения для линий ParallelSweepL и ParallelSweepR из mapOriendtedHoleRectLines до новых возможных границ c Holes
+        for(int j = 0; j < inMap.count(); ++j){
+            if(i != j) {
+                intersectionListFormimgRoutine(currParrR, inMap[j][OrientedLine::PerpendiclSweepU], intersectionsR,
+                                               QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+                /*intersectionListFormimgRoutine(currParrR, inMap[j][OrientedLine::PerpendiclSweepD], intersectionsR,
+                                               QLineF::BoundedIntersection, maxBoundSurvPolyRad);*/
+                intersectionListFormimgRoutine(currParrL, inMap[j][OrientedLine::PerpendiclSweepU], intersectionsL,
+                                               QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+               /* intersectionListFormimgRoutine(currParrL, inMap[j][OrientedLine::PerpendiclSweepD], intersectionsL,
+                                               QLineF::BoundedIntersection, maxBoundSurvPolyRad);*/
+            }
+        }
+        auto disR_list = distanceToPointRoutine(inMap[i][OrientedLine::ParallelSweepR].p1(), intersectionsR);
+        auto disL_list = distanceToPointRoutine(inMap[i][OrientedLine::ParallelSweepL].p1(), intersectionsL);
+
+        auto resIdxR = sort_indexes<double>(disR_list);
+        auto resIdxL = sort_indexes<double>(disL_list);
+        if(intersectionsR.count() >= 1)
+            inMap[i][OrientedLine::ParallelSweepR].setP1(intersectionsR[resIdxR[0]]);
+        if(intersectionsL.count() >= 1)
+            inMap[i][OrientedLine::ParallelSweepL].setP1(intersectionsL[resIdxL[0]]);
+    }
 }
 
 // not finalized yet
@@ -648,25 +739,71 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
                                                         double sweepAngle) {
     QList<QPolygonF> resCells{};
 
-    if (polygon.size() < 3) {
-        return resCells;
-    }
-    if (holes.count() < 1){
-        return resCells;
-    }
+    QList<QMap<OrientedLine, QLineF>> copy = mapOriendtedHoleRectLines;
+    resCells = boustrophedonDecomposition_compact(polygon, holes, copy, sweepAngle);
 
-    //все линии polygon и holes для удобного движения по списку в пункте 2
-    /*QList<QLineF> wholeLinesList;
-    for(int i = 0; i < polygon.count(); ++i){
-        int k = (i+1) % polygon.count();
-        wholeLinesList.append(QLineF(polygon[i], polygon[k]));
-    }
-    for(const auto& currHole : holes){
-        for(int i = 0; i < currHole.count(); ++i){
-            int k = (i+1) % currHole.count();
-            wholeLinesList.append(QLineF(currHole[i], currHole[k]));
+    // modify first 2 * holes.count cells of compact func resCell
+    // сделаем чтобы все зоны строго были поделены для дальнейшего path cover
+    auto check = _updateCellRule(&holes, &resCells);
+
+    bool flag1 = false, flag3 = false;
+    if(check == 2)
+        updateOrientedLine2(copy);
+    else
+        if(check == 1) {
+            flag1 = updateOrientedLine1(copy);
+            flag3 = updateOrientedLine3(copy);
         }
-    }*/
+
+    std::cout << "[boustrophedonDecomposition] here " <<  check << std::endl;
+
+    QPolygonF buff;
+    if(check > 0) {
+        // ------------ решение для зон с U и D ----------------
+        int j = 0;
+//        resCells.clear();
+        for (int i = 0; i < copy.count(); ++i) {
+            buff.clear();
+            buff << copy[i][OrientedLine::PerpendiclSweepU].p1()
+                 << copy[i][OrientedLine::PerpendiclSweepU].p2()
+                 << copy[i][OrientedLine::ParallelSweepL].p2()
+                 << copy[i][OrientedLine::ParallelSweepR].p2();
+            buff = sortPolygonClockwise(buff);
+//            resCells.append(buff);
+            resCells.replace(j, buff);
+            buff.clear();
+            buff << copy[i][OrientedLine::PerpendiclSweepD].p1()
+                 << copy[i][OrientedLine::PerpendiclSweepD].p2()
+                 << copy[i][OrientedLine::ParallelSweepL].p1()
+                 << copy[i][OrientedLine::ParallelSweepR].p1();
+            buff = sortPolygonClockwise(buff);
+//            resCells.append(buff);
+            resCells.replace(j+1, buff);
+            j += 2;
+        }
+        if (check == 1)
+        {
+            // допом ещё cell
+            if(flag1) {
+                buff.clear();
+                buff << copy[0][OrientedLine::PerpendiclSweepU].p1()
+                     << copy[1][OrientedLine::PerpendiclSweepU].p2()
+                     << copy[1][OrientedLine::PerpendiclSweepD].p2()
+                     << copy[0][OrientedLine::PerpendiclSweepD].p1();
+                //            buff = sortPolygonClockwise(buff);
+                resCells.append(buff);
+            }
+            if(flag3){
+                buff.clear();
+                buff << copy[1][OrientedLine::PerpendiclSweepU].p1()
+                     << copy[0][OrientedLine::PerpendiclSweepU].p2()
+                     << copy[0][OrientedLine::PerpendiclSweepD].p2()
+                     << copy[1][OrientedLine::PerpendiclSweepD].p1();
+                //            buff = sortPolygonClockwise(buff);
+                resCells.append(buff);
+            }
+        }
+    }
 
     return resCells;
 }
@@ -855,6 +992,20 @@ void Decomposer::createPolygonWithHoles() {
             << QPointF(360.36, 325.00)
             << QPointF(325.00, 289.64);
     m_holes.append(secHole);
+    /*QPolygonF secHole;
+    secHole << QPointF(289.64 - 100, 325.00 - 100)
+            << QPointF(325.00 - 100, 360.36 - 100)
+            << QPointF(360.36 - 100, 325.00 - 100)
+            << QPointF(325.00 - 100, 289.64 - 100);
+    m_holes.append(secHole);
+    QPolygonF oneHole;
+    oneHole << QPointF(180 + 100, 180 + 100)
+            << QPointF(270 + 100, 180 + 100)
+            << QPointF(300 + 100, 225 + 100)
+            << QPointF(270 + 100, 270 + 100)
+            << QPointF(180 + 100, 270 + 100)
+            << QPointF(150 + 100, 225 + 100);
+    m_holes.append(oneHole);*/
 }
 
 bool Decomposer::showPathCoverage() const {

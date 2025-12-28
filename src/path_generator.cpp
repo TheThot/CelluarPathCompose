@@ -547,11 +547,11 @@ int PathGenerator::goTroughtHoleDirectProc(QVector<int>& holesNumStack, QList<QL
     if (holesNumStack.count() < 1)
         return 0;
     int currSideNum = holesNumStack.last();
-    std::cout << " ======== start ========" << std::endl;
+    /*std::cout << " ======== start ========" << std::endl;
     for(const auto& hs: holesNumStack){
         std::cout << " holesNumStack is " << hs;
     }
-    std::cout << "\n ======== end ========" << std::endl;
+    std::cout << "\n ======== end ========" << std::endl;*/
     bool triggerRule = true;
     int revers = -1;
     int skeepRowNums = 0;

@@ -120,7 +120,7 @@ private:
                                                 const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
                                                 double sweepAngle);
     QList<QPolygonF> boustrophedonDecomposition_compact(const QPolygonF& polygon, const QList<QPolygonF>& holes,
-                                                        const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
+                                                        QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
                                                         double sweepAngle);
     void upDownBorderFormingRoutineNewMannerReadyPoly(const QMap<OrientedLine, QLineF>& inMap,
                                                       const QPolygonF& hole,
@@ -153,6 +153,9 @@ private:
     QPointF inverseRotatePoint(const QPointF& point, double angle);
     double computePolygonArea(const QPolygonF& polygon) const;
     void feedHolesInfoIn();
+    bool updateOrientedLine1(QList<QMap<OrientedLine, QLineF>>& inMap);
+    void updateOrientedLine2(QList<QMap<OrientedLine, QLineF>>& inMap);
+    bool updateOrientedLine3(QList<QMap<OrientedLine, QLineF>>& inMap);
 
     template< typename Type > QVariantList configListVariantLists(Type in_array) const{
         QVariantList result;
