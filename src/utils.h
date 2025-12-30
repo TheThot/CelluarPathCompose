@@ -12,6 +12,7 @@
 #include <QHash>
 #include <QList>
 #include <QPair>
+#include <QPainterPath>
 
 struct holesInfoIn{
     QHash<const QPolygonF*, QPair<QList<QPointF>,QList<QPointF>>>  holeBorderSegm;
@@ -19,6 +20,57 @@ struct holesInfoIn{
 };
 
 namespace baseFunc {
+
+    static QList<QPolygonF> simpleSubtracted(const QPolygonF &poly1, const QPolygonF &poly2)
+    {
+        // Создаем QPainterPath для обоих полигонов
+        QPainterPath path1;
+        path1.addPolygon(poly1);
+
+        QPainterPath path2;
+        path2.addPolygon(poly2);
+
+        // Вычитаем
+        QPainterPath subtracted = path1.subtracted(path2);
+
+        // Получаем все подконтуры
+        QList<QPolygonF> polygons;
+
+        // Проходим по всем элементам пути
+        for (int i = 0; i < subtracted.elementCount(); ) {
+            QPolygonF poly;
+
+            // Начинаем новый подконтур
+            const QPainterPath::Element &elem = subtracted.elementAt(i);
+            if (elem.type == QPainterPath::MoveToElement) {
+                poly << QPointF(elem.x, elem.y);
+                i++;
+
+                // Добавляем все последующие LineTo/CurveTo элементы
+                while (i < subtracted.elementCount()) {
+                    const QPainterPath::Element &nextElem = subtracted.elementAt(i);
+                    if (nextElem.type == QPainterPath::MoveToElement) {
+                        break;  // Начался новый подконтур
+                    }
+                    poly << QPointF(nextElem.x, nextElem.y);
+                    i++;
+                }
+
+                // Если полигон не пустой, добавляем его
+                if (poly.size() > 2) {
+                    // Проверяем, замкнут ли полигон
+                    if (poly.first() != poly.last()) {
+                        poly << poly.first();
+                    }
+                    polygons.append(poly);
+                }
+            } else {
+                i++;
+            }
+        }
+
+        return polygons;
+    }
 
     static double lineEquationKoeff(const QPointF& p1, const QPointF& p2){
         double res;
@@ -83,6 +135,88 @@ namespace baseFunc {
         rule = (squareWhole == 0) ? 0 : (squareWhole < min) ? 1 : 2; // squareWhole == min входит в 2
 
         return rule;
+    }
+
+
+    static void intersectLinesWithPolygon(const QList<QLineF>& lineList, const QPolygonF& polygon, QList<QLineF>& resultLines, const QPolygonF& bounds, const QList<QPolygonF>* _holes)
+    {
+        resultLines.clear();
+
+        for (const QLineF& line : lineList) {
+            QList<QPointF> intersections;
+
+            // Intersect the line with all the polygon edges
+            for (int i=0; i<polygon.count(); ++i) {
+                QLineF polygonEdge(polygon[i], polygon[(i+1) % polygon.count()]);
+                QPointF intersectPoint;
+
+                if (line.intersect(polygonEdge, &intersectPoint) == QLineF::BoundedIntersection) {
+                    if (!intersections.contains(intersectPoint) && bounds.containsPoint(intersectPoint, Qt::WindingFill))
+                        intersections.append(intersectPoint);
+                }
+            }
+
+            for(const auto& currHole:*_holes){
+                for (int i=0; i<currHole.count(); ++i) {
+                    QLineF polygonEdge(currHole[i], currHole[(i+1) % currHole.count()]);
+                    QPointF intersectPoint;
+
+                    if (line.intersect(polygonEdge, &intersectPoint) == QLineF::BoundedIntersection) {
+                        if (!intersections.contains(intersectPoint) && bounds.containsPoint(intersectPoint, Qt::WindingFill))
+                            intersections.append(intersectPoint);
+                    }
+                }
+            }
+
+            std::sort(intersections.begin(), intersections.end(), [&line](const QPointF& pointStart, const QPointF& pointEnd) {
+                return QLineF(line.p1(), pointStart).length() < QLineF(line.p1(), pointEnd).length();
+            });
+
+            for (int j=0; j+1<intersections.count(); j+=2)
+                resultLines.append(QLineF(intersections[j], intersections[j+1]));
+        }
+
+        if (!resultLines.isEmpty()) {
+            QList<QLineF> linesList;
+            linesList.append(resultLines.first());
+            resultLines.removeFirst();
+
+            while (!resultLines.isEmpty()) {
+                QLineF& tempLine = linesList.last();
+                QPointF tempPoint = tempLine.p2();
+
+                int indexNear = -1;
+                double minDistance = std::numeric_limits<double>::max();
+                bool reverse = false;
+
+                for (int i = 0; i < resultLines.count(); ++i) {
+                    double distanceP1 = QLineF(tempPoint, resultLines[i].p1()).length();
+                    double distanceP2 = QLineF(tempPoint, resultLines[i].p2()).length();
+
+                    if (distanceP1 < minDistance) {
+                        minDistance = distanceP1;
+                        indexNear = i;
+                        reverse = false;
+                    }
+                    if (distanceP2 < minDistance) {
+                        minDistance = distanceP2;
+                        indexNear = i;
+                        reverse = true;
+                    }
+                }
+
+                if (indexNear != -1) {
+                    QLineF nextLine = resultLines.takeAt(indexNear);
+                    if (reverse) {
+                        nextLine = QLineF(nextLine.p2(), nextLine.p1());
+                    }
+                    linesList.append(nextLine);
+                }
+                else
+                    break;
+            }
+            resultLines = linesList;
+        }
     }
 
     static void intersectLinesWithPolygon(const QList<QLineF>& lineList, const QPolygonF& polygon, QList<QLineF>& resultLines)
