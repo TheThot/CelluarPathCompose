@@ -52,7 +52,10 @@ QList<QLineF> PathGenerator::_initNonRespectInnerHoles(const QPolygonF* inPoly)
 
     // Now intersect the lines with the polygon
     QList<QLineF> intersectLines;
-    intersectLinesWithPolygon(lineList, *inPoly, intersectLines);
+    if(!_isHolesActive)
+        intersectLinesWithPolygon(lineList, *inPoly, intersectLines);
+    else
+        intersectLinesWithPolygon(lineList, *_survPolygon, intersectLines, *inPoly, _holes);
     res = intersectLines;
 
     // убеждаемся что все линии в одном направлении
