@@ -189,7 +189,6 @@ void Decomposer::updateDecomposition() {
     m_decompositionCells = QVector<QPolygonF>::fromStdVector(cells);
 
     // Выполняем бустрофедон декомпозицию
-//    m_bpd_decompositionCells = boustrophedonDecomposition_compact(m_originalPolygon, m_holes, m_mapOriendtedHoleRectLines, m_sweepAngle);
     m_bpd_decompositionCells = boustrophedonDecomposition(m_originalPolygon, m_holes, m_mapOriendtedHoleRectLines, m_sweepAngle);
     feedHolesInfoIn();
 

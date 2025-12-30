@@ -22,22 +22,22 @@ PathGenerator::PathGenerator(double inStep, double inAngle, QObject *parent) :
 //    _initNonRespectInnerHoles();
 }
 
-QList<QLineF> PathGenerator::_initNonRespectInnerHoles()
+QList<QLineF> PathGenerator::_initNonRespectInnerHoles(const QPolygonF* inPoly)
 {
     QList<QLineF> res = {};
-    if(_survPolygon == nullptr)
+    if(inPoly == nullptr)
         return res;
 
     // формируем полное покрытие полигона
     QPointF center;
-    for(const auto& currP: *_survPolygon){
+    for(const auto& currP: *inPoly){
         center += currP;
     }
-    center /= _survPolygon->size();
-    QRectF bR = _survPolygon->boundingRect();
+    center /= inPoly->size();
+    QRectF bR = inPoly->boundingRect();
 
     QList<QLineF> lineList;
-    double maxWidth = qMax(bR.width(), bR.height());
+    double maxWidth = qMax(bR.width(), bR.height()) + 1e5;
     double halfWidth = maxWidth / 2.0;
     double transectX = center.x() - halfWidth;
     double transectXMax = transectX + maxWidth;
@@ -52,7 +52,7 @@ QList<QLineF> PathGenerator::_initNonRespectInnerHoles()
 
     // Now intersect the lines with the polygon
     QList<QLineF> intersectLines;
-    intersectLinesWithPolygon(lineList, *_survPolygon, intersectLines);
+    intersectLinesWithPolygon(lineList, *inPoly, intersectLines);
     res = intersectLines;
 
     // убеждаемся что все линии в одном направлении
@@ -113,23 +113,28 @@ void PathGenerator::pathUpdation()
     _pathRespectHolesWithNum.clear();
     _holeMannerPathSegm.clear();
 
-    _path = _initNonRespectInnerHoles();
-    _orientedPathSimpl = _orientNonRespectPath();
-    _currRule = _updateCountRule();
+    _path = _initNonRespectInnerHoles(_survPolygon);
+    _orientedPathSimpl = _orientNonRespectPath(_path);
 
     if(_holes != nullptr) {
-        //pfc->init(*_holes);
-        pfc->init(*_holes, _polyBoundary->boundingRect().width(), _polyBoundary->boundingRect().height());
-        _pathRespectHoles = _initLinesRespectHoles(_pathRespectHolesWithNum);
-        _holeMannerPathSegm = _preProcRespectInnerHoles();
-        _pathRespectHoles = _pathProcRespectInnerHoles();
-        /*for(auto i = _holeMannerPathSegm.cbegin(), end = _holeMannerPathSegm.cend(); i != end; ++i){
-            std::cout << "Side of hole is " << i.key() << std::endl;
-            _qDebugPrintPathRespectHoles(i.value());
-        }*/
-//        _qDebugPrintPathRespectHoles(_pathRespectHolesWithNum);
-//        _preprocInLines();
+        for (int i = 0; i < _bpd_decompositionCells->count(); ++i) {
+            auto currCell = _bpd_decompositionCells->at(i);
+            auto res = _pathSegmRelationToCell(currCell);
+            auto resPointList = _orientNonRespectPath(res);
+            if(resPointList.count() != 0)
+                _pathRespectHoles += resPointList;
+            else
+                std::cout << "Wrong " << std::endl;
+        }
     }
+}
+
+QList<QLineF> PathGenerator::_pathSegmRelationToCell(const QPolygonF& inPoly){
+    QList<QLineF> res = {};
+
+    res = _initNonRespectInnerHoles(&inPoly);
+
+    return res;
 }
 
 void PathGenerator::setPolyHolesList(const QList<QPolygonF>& in)
@@ -206,10 +211,6 @@ QList<QList<QPointF>> PathGenerator::_initLinesRespectHoles(QList<QList<QPair<QP
 
     return res;
 }
-
-/*pathSegmRelationToCell(){
-
-}*/
 
 //функция по сути преобразует сложные комбинации типов хранящие информацию о структуре SurvPoly в _pathRespectHoles которое выдаются qml интерфейсу
 QList<QList<QPointF>> PathGenerator::_drawComplexCoverPathSequence(){
@@ -385,16 +386,16 @@ void PathGenerator::_adjustToLawnower_oneVectorCase(const Type &lineList, Type &
 
 }
 
-QList<QList<QPointF>> PathGenerator::_orientNonRespectPath(){
+QList<QList<QPointF>> PathGenerator::_orientNonRespectPath(const QList<QLineF>& inPath){
     QList<QList<QPointF>> res1, res2;
 
-    if(_path.count() < 1){
+    /*if(inPath.count() < 1){
         _startEndP.first = QPointF{-1e4, -1e4};
         _startEndP.second = _startEndP.first;
         return res1;
-    }
+    }*/
 
-    for(const auto& currL:_path){
+    for(const auto& currL:inPath){
         QList<QPointF> buffL;
         buffL   << currL.p1()
                 << currL.p2();
@@ -426,9 +427,9 @@ QList<QList<QPointF>> PathGenerator::_orientNonRespectPath(){
     }
 
     // формируем точку входа выхода
-    _startEndP.first    = res2[0][0];
+    /*_startEndP.first    = res2[0][0];
     const auto& lastRow =  res2[res2.count()-1];
-    _startEndP.second   = lastRow[lastRow.count()-1];
+    _startEndP.second   = lastRow[lastRow.count()-1];*/
 
     return res2;
 }

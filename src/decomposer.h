@@ -132,6 +132,14 @@ private:
                                                     QPolygonF& returnDownPoly,
                                                      QList<QPointF>& returnUpL,
                                                      QList<QPointF>& returnDownL);
+    void newParallFormingRoutine(const QMap<OrientedLine, QLineF>& inMap,
+                                 const QPolygonF& survPolyBound,
+                                 QLineF& returnL,
+                                 QLineF& returnR);
+    void newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap,
+                                 const QPolygonF& hole,
+                                 QLineF& returnUp,
+                                 QLineF& returnDown);
 
     // Утилиты
     void iniAllAlliasBCD(int size, QList<QMap<OrientedLine, QLineF>>& copy,
@@ -141,14 +149,6 @@ private:
                         QList<QList<QPointF>>& holeBorderDown);
     template <typename T>
     T rotationStruct(const T& v, double sweepAngle);
-    void newParallFormingRoutine(const QMap<OrientedLine, QLineF>& inMap,
-                                 const QPolygonF& survPolyBound,
-                                 QLineF& returnL,
-                                 QLineF& returnR);
-    void newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap,
-                                 const QPolygonF& hole,
-                                 QLineF& returnUp,
-                                 QLineF& returnDown);
     QPointF rotatePoint(const QPointF& point, double angle);
     QPointF inverseRotatePoint(const QPointF& point, double angle);
     double computePolygonArea(const QPolygonF& polygon) const;

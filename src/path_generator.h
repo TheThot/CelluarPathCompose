@@ -70,10 +70,11 @@ private:
 
     };
 
-    QList<QLineF>           _initNonRespectInnerHoles();
+    QList<QLineF>           _pathSegmRelationToCell(const QPolygonF& inPoly);
+    QList<QLineF>           _initNonRespectInnerHoles(const QPolygonF* inPoly);
     QList<QList<QPointF>>   _initLinesRespectHoles(QList<QList<QPair<QPointF,int>>>& pathRespectHolesWithNum);
     QVariantList             _oneLoopTraj(const QList<QList<QPointF>>& in) const;
-    QList<QList<QPointF>>   _orientNonRespectPath();
+    QList<QList<QPointF>>   _orientNonRespectPath(const QList<QLineF>& inPath);
     void                    _orientLineOneDirection(const QList<QLineF>& lineList, QList<QLineF>& resultLines);
     template<typename Type>
     void                    _orientLineOneDirection(const QList<Type>& lineList, QList<Type>& resultLines);
