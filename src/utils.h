@@ -12,6 +12,7 @@
 #include <QHash>
 #include <QList>
 #include <QPair>
+#include <QPainterPath>
 
 struct holesInfoIn{
     QHash<const QPolygonF*, QPair<QList<QPointF>,QList<QPointF>>>  holeBorderSegm;
@@ -19,6 +20,57 @@ struct holesInfoIn{
 };
 
 namespace baseFunc {
+
+    static QList<QPolygonF> simpleSubtracted(const QPolygonF &poly1, const QPolygonF &poly2)
+    {
+        // Создаем QPainterPath для обоих полигонов
+        QPainterPath path1;
+        path1.addPolygon(poly1);
+
+        QPainterPath path2;
+        path2.addPolygon(poly2);
+
+        // Вычитаем
+        QPainterPath subtracted = path1.subtracted(path2);
+
+        // Получаем все подконтуры
+        QList<QPolygonF> polygons;
+
+        // Проходим по всем элементам пути
+        for (int i = 0; i < subtracted.elementCount(); ) {
+            QPolygonF poly;
+
+            // Начинаем новый подконтур
+            const QPainterPath::Element &elem = subtracted.elementAt(i);
+            if (elem.type == QPainterPath::MoveToElement) {
+                poly << QPointF(elem.x, elem.y);
+                i++;
+
+                // Добавляем все последующие LineTo/CurveTo элементы
+                while (i < subtracted.elementCount()) {
+                    const QPainterPath::Element &nextElem = subtracted.elementAt(i);
+                    if (nextElem.type == QPainterPath::MoveToElement) {
+                        break;  // Начался новый подконтур
+                    }
+                    poly << QPointF(nextElem.x, nextElem.y);
+                    i++;
+                }
+
+                // Если полигон не пустой, добавляем его
+                if (poly.size() > 2) {
+                    // Проверяем, замкнут ли полигон
+                    if (poly.first() != poly.last()) {
+                        poly << poly.first();
+                    }
+                    polygons.append(poly);
+                }
+            } else {
+                i++;
+            }
+        }
+
+        return polygons;
+    }
 
     static double lineEquationKoeff(const QPointF& p1, const QPointF& p2){
         double res;

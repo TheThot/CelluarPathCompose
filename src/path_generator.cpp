@@ -118,13 +118,12 @@ void PathGenerator::pathUpdation()
 
     if(_holes != nullptr) {
         for (int i = 0; i < _bpd_decompositionCells->count(); ++i) {
-            auto currCell = _bpd_decompositionCells->at(i);
-            auto res = _pathSegmRelationToCell(currCell);
+            auto res = _pathSegmRelationToCell(_bpd_decompositionCells->at(i));
             auto resPointList = _orientNonRespectPath(res);
             if(resPointList.count() != 0)
                 _pathRespectHoles += resPointList;
             else
-                std::cout << "Wrong " << std::endl;
+                std::cout << "No path in polysegm " << std::endl;
         }
     }
 }

@@ -801,6 +801,13 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
                 //            buff = sortPolygonClockwise(buff);
                 resCells.append(buff);
             }
+        }else{
+            if(check == 2){
+                auto temp = simpleSubtracted(resCells[0], resCells[2].united(resCells[3]));
+                resCells.removeAt(0);
+                for(const auto& t: temp)
+                    resCells.prepend(t);
+            }
         }
     }
 
