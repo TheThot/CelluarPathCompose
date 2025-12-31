@@ -135,7 +135,7 @@ void Decomposer::setSweepAngle(double angle) {
 
     m_sweepAngle = angle;
     transects()->setGridAngle(m_sweepAngle);
-    _transects->pathUpdation();
+//    _transects->pathUpdation();
     emit sweepAngleChanged();
     updateDecomposition();
 }
@@ -195,7 +195,7 @@ void Decomposer::updateDecomposition() {
     _transects->setPolyBoundary(m_orientedRect);
     _transects->setDecomposeStruct(_holeData);
     _transects->setPathSegments(m_bpd_decompositionCells);
-    _transects->pathUpdation();
+//    _transects->pathUpdation();
 
     emit decompositionCellsChanged();
     emit orientedRectChanged();

@@ -76,7 +76,7 @@ void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, i
 
 void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, int &yWorld, const QRectF& iniArea) {
     xWorld = std::floor(( x - iniArea.bottomLeft().x() ) / _scaleX);
-    yWorld = std::floor((y - iniArea.bottomLeft().y() ) / _scaleY);
+    yWorld = std::floor(( y - iniArea.bottomLeft().y() ) / _scaleY);
 }
 
 
