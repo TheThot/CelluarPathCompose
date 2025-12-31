@@ -115,6 +115,7 @@ void PathGenerator::pathUpdation()
     _pathRespectHoles.clear();
     _pathRespectHolesWithNum.clear();
     _holeMannerPathSegm.clear();
+    _pathIntoCell.clear();
 
     _path = _initNonRespectInnerHoles(_survPolygon);
     _orientedPathSimpl = _orientNonRespectPath(_path);
@@ -122,13 +123,63 @@ void PathGenerator::pathUpdation()
     if(_holes != nullptr) {
         for (int i = 0; i < _bpd_decompositionCells->count(); ++i) {
             auto res = _pathSegmRelationToCell(_bpd_decompositionCells->at(i));
-            auto resPointList = _orientNonRespectPath(res);
-            if(resPointList.count() != 0)
-                _pathRespectHoles += resPointList;
-            else
-                std::cout << "No path in polysegm " << std::endl;
+            QList<QList<QPointF>> resPointList = _orientNonRespectPath(res);
+            _pathIntoCell[&_bpd_decompositionCells->at(i)] = resPointList;
+            /*if(resPointList.count() != 0)
+                _pathRespectHoles += resPointList;*/
         }
+        /*auto iter = _pathIntoCell.begin();
+        while(iter != _pathIntoCell.end()) {
+            _qDebugPrintPath(iter.value());
+            ++iter;
+        }*/
+        //применяем astar для соединения между cell
+        _pathRespectHoles = _pathRouteBetweenCells(_pathIntoCell);
     }
+}
+
+QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath){
+    QList<QList<QPointF>> res = {};
+
+    auto iter = inPath.begin();
+    QPointF first, sec;
+    if(iter.value().count() != 0)
+        first = iter.value().last().last();
+    else
+        return res;
+    res.append(iter.value());
+    ++iter;
+    pfc->perform(first, sec, _gridSpace);
+    auto pathBuff = pfc->getPath2d();
+    pathBuff = uniformSample(pathBuff, 4);
+    if (pathBuff.count() != 0)
+        res += pathBuff;
+    res.append(iter.value());
+
+    /*auto iter = inPath.begin();
+    QPointF first, sec;
+    if(iter.value().count() != 0)
+        first = iter.value().last().last();
+    while(iter != inPath.end()){
+        auto currPath = iter.value();
+        if(currPath.count() != 0) {
+            res += currPath;
+            if(iter != inPath.begin()) {
+                sec = currPath[0][0];
+                pfc->perform(first, sec, _gridSpace);
+                auto pathBuff = pfc->getPath2d();
+                pathBuff = uniformSample(pathBuff, 4);
+                first = currPath.last().last();
+                if (pathBuff.count() != 0)
+                    res += pathBuff;
+                else
+                    std::cout << "[_pathRouteBetweenCells] pathBuff is null " << std::endl;
+            }
+        }
+        ++iter;
+    }*/
+
+    return res;
 }
 
 QList<QLineF> PathGenerator::_pathSegmRelationToCell(const QPolygonF& inPoly){
@@ -143,6 +194,7 @@ void PathGenerator::setPolyHolesList(const QList<QPolygonF>& in)
 {
     _holes = &in;
     _isHolesActive = !_isHolesActive;
+    pfc->init(*_holes);
 }
 
 void PathGenerator::setSurvPoly(const QPolygonF& in)
@@ -253,6 +305,50 @@ QList<QList<QPointF>> PathGenerator::_drawComplexCoverPathSequence(){
     }
 
     return res;
+}
+
+void PathGenerator::_qDebugPrintPath(const QList<QList<QPointF>>& pathData){
+    qDebug() << "=== Debug _pathRespectHolesWithNum ===";
+    qDebug() << "Total paths:" << pathData.size();
+
+    for (int pathIndex = 0; pathIndex < pathData.size(); ++pathIndex) {
+        const QList<QPointF>& currentPath = pathData[pathIndex];
+
+        qDebug() << "\nPath #" << pathIndex + 1 << "(size:" << currentPath.size() << "):";
+
+        if (currentPath.isEmpty()) {
+            qDebug() << "  [Empty path]";
+            continue;
+        }
+
+        // Вывод всех точек с индексами
+        for (int pointIndex = 0; pointIndex < currentPath.size(); ++pointIndex) {
+            const QPointF& point = currentPath[pointIndex];
+
+            qDebug() << QString("  %1: (%2, %3)")
+                    .arg(pointIndex, 3)
+                    .arg(point.x(), 0, 'f', 2)
+                    .arg(point.y(), 0, 'f', 2);
+        }
+
+    }
+
+    // Общая статистика
+    int totalPoints = 0;
+    for (const auto& path : pathData) {
+        totalPoints += path.size();
+    }
+
+    qDebug() << "\n=== Summary ===";
+    qDebug() << "Total paths:" << pathData.size();
+    qDebug() << "Total points:" << totalPoints;
+
+    if (!pathData.empty()) {
+        qDebug() << QString("Average points per path: %1")
+                .arg(static_cast<double>(totalPoints) / pathData.size(), 0, 'f', 2);
+    }
+
+    qDebug() << "=== End debug ===";
 }
 
 void PathGenerator::_qDebugPrintPathRespectHoles(const QList<QList<QPair<QPointF, int>>>& pathData) {

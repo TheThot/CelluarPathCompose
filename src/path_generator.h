@@ -83,10 +83,12 @@ private:
     QList<QList<QPointF>>   _pathProcRespectInnerHoles();
     void _debugPrintHolesInfo(const holesInfoIn& info);
     void _qDebugPrintPathRespectHoles(const QList<QList<QPair<QPointF, int>>>& pathData);
+    void _qDebugPrintPath(const QList<QList<QPointF>>& pathData);
     QList<QList<QPointF>> _drawComplexCoverPathSequence();
     QMap<int,QList<QList<QPair<QPointF,int>>>> _preProcRespectInnerHoles();
     int goTroughtHoleDirectProc(QVector<int>& holesNumStack, QList<QList<QPointF>>& res);
     bool _updateCountRule();
+    QList<QList<QPointF>> _pathRouteBetweenCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath);
 
     QPair<QPointF,QPointF> _startEndP;
 
@@ -101,6 +103,7 @@ private:
     QVector<int>            _holesNumStack;
     QMap<int,
     QList<QList< QPair<QPointF,int> >>    >    _holeMannerPathSegm;
+    QHash< const QPolygonF*, QList<QList<QPointF>> >   _pathIntoCell;
 
     // указатели на переменные в decompose
     const QList<QPolygonF>*     _holes = nullptr;
