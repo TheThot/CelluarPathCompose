@@ -531,7 +531,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         }
     }
     // поворачиваем полигон SurvPoly
-    auto rotatedPolygon = rotationStruct<QPolygonF>(polygon, sweepAngle);
+    auto rotatedPolygon = rotationStruct<QPolygonF>(m_orientedRect, sweepAngle);
     // после того как весь QList mapOriendtedHoleRectLines обработан и сориентрован выполняем деление на зоны
     // 4. формирование yLevels по аналогии с trapezoidalCellAlgorithm
     // упорядовачиваем координаты вершин, уникальные
