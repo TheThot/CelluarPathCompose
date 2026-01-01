@@ -29,7 +29,7 @@ void PathFinderCalculator::perform(const QPointF &pointFrom, const QPointF &poin
     _pointFrom2d = pointFrom;
     _pointTo2d = pointTo;
     buildPath2d();
-//    simplifyPath2dByIntersect();
+    simplifyPath2dByIntersect();
 }
 
 void PathFinderCalculator::clear() {
@@ -88,8 +88,8 @@ void PathFinderCalculator::buildPath2d() {
     _pathArea = QRectF(QPointF{minX,maxY}, QPointF{maxX,minY});
 
     initGenerator();
-//    initCollisions();
-    initCollisions(_pathArea);
+    initCollisions();
+//    initCollisions(_pathArea);
 
     int fromWorldX, fromWorldY, toWorldX, toWorldY;
     /*getWorldCoordinate(_pointFrom2d.x(), _pointFrom2d.y(), fromWorldX, fromWorldY);
@@ -109,7 +109,7 @@ void PathFinderCalculator::buildPath2d() {
 
 void PathFinderCalculator::initCollisions(const QRectF& area) {
     QList<QPoint> temp = {};
-    double step = 1e-3;
+    double step = 1e-5;
     int xWrld, yWrld;
     for(const auto & obst: _obstacles2d){
         for(int i = 0; i < obst.count(); ++i){
