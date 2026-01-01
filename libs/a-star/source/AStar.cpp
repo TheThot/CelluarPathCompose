@@ -84,7 +84,7 @@ bool AStar::Generator::isOutOfBounds(Vec2i coordinates_) const {
 AStar::CoordinateList AStar::Generator::findPath(Vec2i source_, Vec2i target_) {
     // Проверяем, находятся ли точки в допустимых пределах
     if (isOutOfBounds(source_) || isOutOfBounds(target_)) {
-        std::cout << "Ошибка: начальная или конечная точка вне границ мира\n";
+        std::cout << "Warning strat/finish point in out of bounds\n";
         return CoordinateList();
     }
 
@@ -103,13 +103,13 @@ AStar::CoordinateList AStar::Generator::findPath(Vec2i source_, Vec2i target_) {
     long targetIndex = coordinateToMapIndex(target_);
 
     if (wallsMap.find(sourceIndex) != wallsMap.end()) {
-        std::cout << "Ошибка: начальная точка является препятствием\n";
+        std::cout << "Warning strat point on obstacle\n";
         releaseNodes(openSet);
         return CoordinateList();
     }
 
     if (wallsMap.find(targetIndex) != wallsMap.end()) {
-        std::cout << "Ошибка: конечная точка является препятствием\n";
+        std::cout << "Warning finish point on obstacle\n";
         releaseNodes(openSet);
         return CoordinateList();
     }

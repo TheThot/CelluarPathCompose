@@ -144,14 +144,20 @@ QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const Q
 
     auto iter = inPath.begin();
     QPointF first, sec;
-    if(iter.value().count() != 0)
-        first = iter.value().last().last();
+    auto currPath = iter.value();
+    if(currPath.count() != 0) {
+        auto currLine = currPath[currPath.count()-1];
+        first = QLineF(currLine[currLine.count()-2], currLine[currLine.count()-1]).pointAt(0.95);
+    }
     else
         return res;
     res.append(iter.value());
     ++iter;
-    if(iter.value().count() != 0)
-        sec = iter.value().first().first();
+    currPath = iter.value();
+    if(iter.value().count() != 0) {
+        auto currLine = currPath[0];
+        sec = QLineF(currLine[0], currLine[1]).pointAt(0.05);
+    }
     else
         return res;
     pfc->perform(first, sec);
@@ -173,7 +179,7 @@ QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const Q
             res += currPath;
             if(iter != inPath.begin()) {
                 sec = currPath[0][0];
-                pfc->perform(first, sec, _gridSpace);
+                pfc->perform(first, sec);
                 auto pathBuff = pfc->getPath2d();
                 pathBuff = uniformSample(pathBuff, 4);
                 first = currPath.last().last();

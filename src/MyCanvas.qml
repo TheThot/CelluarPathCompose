@@ -181,9 +181,9 @@ Canvas {
             for(var j = 0; j < lines[k].length-1; j+=step){
                 drawAline(ctx, lines[k][j], lines[k][j+1], color)
             }
-            if(k > 0 && k < lines.length){ // переходы змейки
+            /*if(k > 0 && k < lines.length){ // переходы змейки
                 drawAline(ctx, lines[k-1][lines[k-1].length-1], lines[k][0], color)
-            }
+            }*/
         }
         ctx.restore()  // восстановить состояние контекста
     }
