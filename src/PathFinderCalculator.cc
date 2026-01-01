@@ -5,6 +5,8 @@
 #include <ostream>
 #include <QLineF>
 
+const int PathFinderCalculator::_worldOffset{2};
+
 PathFinderCalculator::PathFinderCalculator() {
     clear();
 }
@@ -48,30 +50,30 @@ AStar::Vec2i PathFinderCalculator::specifyVolume(const QRectF& intoArea)
 {
     //так как в алгоритме Astar числа веществ проводим масштабирование
     int resX, resY;
-    resX = std::ceil(std::abs(intoArea.width()));
-    resY = std::ceil(std::abs(intoArea.height()));
+    resX = std::ceil(std::abs(intoArea.width())) + 2*_worldOffset;
+    resY = std::ceil(std::abs(intoArea.height())) + 2*_worldOffset;
     return AStar::Vec2i{resX, resY};
 }
 
 void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, int &yWorld) {
-    xWorld = std::trunc(x /*/ _scaleX*/);
-    yWorld = std::trunc(y /*/ _scaleY*/);
+    xWorld = std::trunc(x /*/ _scaleX*/) + _worldOffset;
+    yWorld = std::trunc(y /*/ _scaleY*/) + _worldOffset;
 }
 
 void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, int &yWorld, const QRectF& iniArea) {
-    xWorld = std::trunc(( x - iniArea.bottomLeft().x() ) /*/ _scaleX*/);
-    yWorld = std::trunc(( y - iniArea.bottomLeft().y() ) /*/ _scaleY*/);
+    xWorld = std::trunc( x - iniArea.bottomLeft().x() ) + _worldOffset; /*/ _scaleX)*/
+    yWorld = std::trunc( y - iniArea.bottomLeft().y() ) + _worldOffset; /*/ _scaleY)*/
 }
 
 
 QPointF PathFinderCalculator::backsideCoordConversion(int xWorld, int yWorld)
 {
-    return QPointF(xWorld /** _scaleX*/, yWorld /** _scaleY*/);
+    return QPointF(xWorld - _worldOffset /** _scaleX*/, yWorld - _worldOffset /** _scaleY*/);
 }
 
 QPointF PathFinderCalculator::backsideCoordConversion(int xWorld, int yWorld, const QRectF& iniArea)
 {
-    return QPointF(xWorld /** _scaleX*/ + iniArea.bottomLeft().x(), yWorld /** _scaleY*/ + iniArea.bottomLeft().y());
+    return QPointF(xWorld - _worldOffset /** _scaleX*/ + iniArea.bottomLeft().x(), yWorld - _worldOffset /** _scaleY*/ + iniArea.bottomLeft().y());
 }
 
 void PathFinderCalculator::buildPath2d() {
