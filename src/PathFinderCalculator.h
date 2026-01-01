@@ -1,8 +1,8 @@
 #pragma once
 
-#include <QVariantList>
 #include <QPolygonF>
 #include <QPointF>
+#include <QList>
 #include "../libs/a-star/source/AStar.hpp"
 
 class PathFinderCalculator {
@@ -14,19 +14,18 @@ public:
     static bool isEqual(const QPointF &a, const QPointF &b);
 
     void init(const QList<QPolygonF> &obstacles);
-    void init(const QList<QPolygonF> &obstacles, int worldSizeX, int worldSizeY);
 
-    void perform(const QPointF &pointFrom, const QPointF &pointTo, double pathGridMargins);
+    void perform(const QPointF &pointFrom, const QPointF &pointTo);
 
     QList<QPointF> getPath2d();
 
 private:
-    double _pathGridMargins;  //Размер ячейки области
-    double _scaleX;
-    double _scaleY;
+//    double _pathGridMargins;  //Размер ячейки области
+    /*double _scaleX;
+    double _scaleY;*/
     double _wrldX;
     double _wrldY;
-    QPointF _centerArea;
+    QRectF _pathArea;
 
     QPointF _pointFrom2d;
     QPointF _pointTo2d;
@@ -38,11 +37,10 @@ private:
 
     void buildPath2d();
 
-    void initGenerator(double rectSizeX, double rectSizeY, double pathGridMargins);
+    void initGenerator();
 
-    AStar::Vec2i specifyVolume(double rectSizeX, double rectSizeY, double maxObstclSize, double pathGridMargins);
+    AStar::Vec2i specifyVolume(const QRectF& intoArea);
 
-    void initCollisions(const QPoint& centerArea);
     void initCollisions();
     void initCollisions(const QRectF& area);
 
