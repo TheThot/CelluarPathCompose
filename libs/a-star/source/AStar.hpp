@@ -36,6 +36,8 @@ namespace AStar {
     };
 
     class Generator {
+        void removeCollision(Vec2i coordinates_);
+        bool isOutOfBounds(Vec2i coordinates_) const;
         bool detectCollision(const std::map<long, long>& wallsMap, Vec2i coordinates_, int directionIndex = -1);
         Node* findNodeOnList(std::vector<Node*>& nodes_, Vec2i coordinates_);
         void releaseNodes(std::vector<Node*>& nodes_);
@@ -50,6 +52,7 @@ namespace AStar {
         void addCollision(Vec2i coordinates_);
         void clearCollisions();
         CoordinateList findPath(Vec2i source_, Vec2i target_);
+        void allowMovementAlongBorders(bool allow);
 
         // Новая функция для визуализации
         void visualizePath(const CoordinateList& path, Vec2i source_, Vec2i target_) const;
@@ -61,6 +64,8 @@ namespace AStar {
         CoordinateList walls;
         Vec2i worldSize;
         uint directions;
+        bool allowDiagonal;
+        bool allowBorderMovement;
     };
 
     class Heuristic {

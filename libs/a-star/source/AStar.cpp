@@ -18,7 +18,8 @@ uint AStar::Node::getScore() const {
 }
 
 AStar::Generator::Generator() {
-    setDiagonalMovement(false);
+    allowDiagonal = false;
+    allowBorderMovement = false;  // По умолчанию запрещено
     setHeuristic(&Heuristic::manhattan);
     direction = {
             {0, 1}, {1, 0}, {0, -1}, {-1, 0},
@@ -31,6 +32,7 @@ void AStar::Generator::setWorldSize(Vec2i worldSize_) {
 }
 
 void AStar::Generator::setDiagonalMovement(bool enable_) {
+    allowDiagonal = enable_;
     directions = (enable_ ? 8 : 4);
 }
 
@@ -39,14 +41,53 @@ void AStar::Generator::setHeuristic(HeuristicFunction heuristic_) {
 }
 
 void AStar::Generator::addCollision(Vec2i coordinates_) {
+    // Проверяем, что препятствие внутри границ (если движение вдоль границ разрешено)
+    if (!allowBorderMovement) {
+        if (coordinates_.x < 0 || coordinates_.x >= worldSize.x ||
+            coordinates_.y < 0 || coordinates_.y >= worldSize.y) {
+            return;  // Игнорируем препятствия вне границ
+        }
+    }
     walls.push_back(coordinates_);
+}
+
+void AStar::Generator::removeCollision(Vec2i coordinates_) {
+    auto it = std::find(walls.begin(), walls.end(), coordinates_);
+    if (it != walls.end()) {
+        walls.erase(it);
+    }
 }
 
 void AStar::Generator::clearCollisions() {
     walls.clear();
 }
 
+
+void AStar::Generator::allowMovementAlongBorders(bool allow) {
+    allowBorderMovement = allow;
+}
+
+// проверка выхода за границы
+bool AStar::Generator::isOutOfBounds(Vec2i coordinates_) const {
+    if (allowBorderMovement) {
+        // Разрешаем движение ПО границе, но не ЗА границу
+        // Граничные клетки: x=0, x=worldSize.x-1, y=0, y=worldSize.y-1
+        return (coordinates_.x < 0 || coordinates_.x > worldSize.x - 1 ||
+                coordinates_.y < 0 || coordinates_.y > worldSize.y - 1);
+    } else {
+        // Стандартная проверка (нельзя быть на границе)
+        return (coordinates_.x < 0 || coordinates_.x >= worldSize.x ||
+                coordinates_.y < 0 || coordinates_.y >= worldSize.y);
+    }
+}
+
 AStar::CoordinateList AStar::Generator::findPath(Vec2i source_, Vec2i target_) {
+    // Проверяем, находятся ли точки в допустимых пределах
+    if (isOutOfBounds(source_) || isOutOfBounds(target_)) {
+        std::cout << "Ошибка: начальная или конечная точка вне границ мира\n";
+        return CoordinateList();
+    }
+
     Node* current = nullptr;
     std::vector<Node*> openSet, closedSet;
     openSet.reserve(100);
@@ -56,15 +97,25 @@ AStar::CoordinateList AStar::Generator::findPath(Vec2i source_, Vec2i target_) {
     std::map<long, long> wallsMap;
     buildWallsMap(wallsMap);
 
+    // ВАЖНО: проверяем, не являются ли начальная/конечная точки препятствиями
+    // но учитываем, что на границах могут быть допустимые стартовые точки
+    long sourceIndex = coordinateToMapIndex(source_);
+    long targetIndex = coordinateToMapIndex(target_);
+
+    if (wallsMap.find(sourceIndex) != wallsMap.end()) {
+        std::cout << "Ошибка: начальная точка является препятствием\n";
+        releaseNodes(openSet);
+        return CoordinateList();
+    }
+
+    if (wallsMap.find(targetIndex) != wallsMap.end()) {
+        std::cout << "Ошибка: конечная точка является препятствием\n";
+        releaseNodes(openSet);
+        return CoordinateList();
+    }
+
     CoordinateList path;
     bool pathFound = false;
-
-    // Проверяем, не находятся ли точки в стенах или вне границ
-    if (detectCollision(wallsMap, source_) || detectCollision(wallsMap, target_)) {
-        // Освобождаем память и возвращаем пустой путь
-        releaseNodes(openSet);
-        return path;
-    }
 
     while (!openSet.empty()) {
         auto current_it = openSet.begin();
@@ -87,8 +138,7 @@ AStar::CoordinateList AStar::Generator::findPath(Vec2i source_, Vec2i target_) {
         openSet.erase(current_it);
 
         for (uint i = 0; i < directions; ++i) {
-            Vec2i newCoordinates{current->coordinates.x + direction[i].x,
-                                current->coordinates.y + direction[i].y};
+            Vec2i newCoordinates = current->coordinates + direction[i];
 
             if (detectCollision(wallsMap, newCoordinates, i) ||
                 findNodeOnList(closedSet, newCoordinates)) {
@@ -145,6 +195,14 @@ void AStar::Generator::releaseNodes(std::vector<Node*>& nodes_) {
 void AStar::Generator::buildWallsMap(std::map<long, long>& wallsMap) {
     wallsMap.clear();
     for (auto coordinate : walls) {
+        // Если разрешено движение вдоль границ, добавляем все препятствия
+        // Иначе фильтруем те, что вне границ
+        if (!allowBorderMovement) {
+            if (coordinate.x < 0 || coordinate.x >= worldSize.x ||
+                coordinate.y < 0 || coordinate.y >= worldSize.y) {
+                continue;
+            }
+        }
         long mapIndex = coordinateToMapIndex(coordinate);
         wallsMap[mapIndex] = mapIndex;
     }
@@ -212,61 +270,6 @@ void AStar::Generator::visualizePathColor(const CoordinateList& path, Vec2i sour
         }
         std::cout << "\n";
     }
-}
-
-bool AStar::Generator::detectCollision(const std::map<long, long>& wallsMap, Vec2i coordinates_, int directionIndex) {
-    // Основная проверка границ и стен
-    if (coordinates_.x < 0 || coordinates_.x >= worldSize.x ||
-        coordinates_.y < 0 || coordinates_.y >= worldSize.y) {
-        return true;
-    }
-
-    long mapIndex = coordinateToMapIndex(coordinates_);
-    auto it = wallsMap.find(mapIndex);
-    if (it != wallsMap.end()) {
-        return true;
-    }
-
-    // Дополнительная проверка для диагональных ходов
-    if (directions == 8 && directionIndex >= 4) {
-        // Для диагональных направлений (индексы 4-7)
-        // Проверяем, что обе соседние клетки тоже свободны
-
-        // Направления диагоналей:
-        // 4: {-1, -1} ↖  // Нужно проверить {-1, 0} ← и {0, -1} ↑
-        // 5: {1, 1}   ↘  // Нужно проверить {1, 0} → и {0, 1} ↓
-        // 6: {-1, 1}  ↙  // Нужно проверить {-1, 0} ← и {0, 1} ↓
-        // 7: {1, -1}  ↗  // Нужно проверить {1, 0} → и {0, -1} ↑
-
-        Vec2i neighbor1, neighbor2;
-
-        switch (directionIndex) {
-            case 4: // ↖
-                neighbor1 = {coordinates_.x + 1, coordinates_.y};  // →
-                neighbor2 = {coordinates_.x, coordinates_.y + 1};  // ↓
-                break;
-            case 5: // ↘
-                neighbor1 = {coordinates_.x - 1, coordinates_.y};  // ←
-                neighbor2 = {coordinates_.x, coordinates_.y - 1};  // ↑
-                break;
-            case 6: // ↙
-                neighbor1 = {coordinates_.x + 1, coordinates_.y};  // →
-                neighbor2 = {coordinates_.x, coordinates_.y - 1};  // ↑
-                break;
-            case 7: // ↗
-                neighbor1 = {coordinates_.x - 1, coordinates_.y};  // ←
-                neighbor2 = {coordinates_.x, coordinates_.y + 1};  // ↓
-                break;
-        }
-
-        // Если хоть одна из соседних клеток - препятствие, диагональный ход запрещен
-        if (detectCollision(wallsMap, neighbor1, -1) ||
-            detectCollision(wallsMap, neighbor2, -1)) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 // НОВАЯ ФУНКЦИЯ: Визуализация пути
@@ -381,10 +384,70 @@ uint AStar::Heuristic::manhattan(Vec2i source_, Vec2i target_) {
 
 uint AStar::Heuristic::euclidean(Vec2i source_, Vec2i target_) {
     auto delta = getDelta(source_, target_);
-    return static_cast<uint>(10 * sqrt(pow(delta.x, 2) + pow(delta.y, 2)));
+    return static_cast<uint>(10 * std::sqrt(delta.x * delta.x + delta.y * delta.y));
 }
 
 uint AStar::Heuristic::octagonal(Vec2i source_, Vec2i target_) {
     auto delta = getDelta(source_, target_);
     return 10 * (delta.x + delta.y) + (-6) * std::min(delta.x, delta.y);
+}
+
+
+bool AStar::Generator::detectCollision(const std::map<long, long>& wallsMap, Vec2i coordinates_, int directionIndex) {
+    // Проверка границ
+    if (isOutOfBounds(coordinates_)) {
+        return true;
+    }
+
+    long mapIndex = coordinateToMapIndex(coordinates_);
+    auto it = wallsMap.find(mapIndex);
+    if (it != wallsMap.end()) {
+        return true;
+    }
+
+    // Дополнительная проверка для диагональных ходов
+    if (allowDiagonal && directionIndex >= 4) {
+        // Для диагональных направлений (индексы 4-7)
+        // Проверяем, что обе соседние клетки тоже свободны
+
+        // Направления диагоналей:
+        // 4: {-1, -1} ↖  // Нужно проверить {-1, 0} ← и {0, -1} ↑
+        // 5: {1, 1}   ↘  // Нужно проверить {1, 0} → и {0, 1} ↓
+        // 6: {-1, 1}  ↙  // Нужно проверить {-1, 0} ← и {0, 1} ↓
+        // 7: {1, -1}  ↗  // Нужно проверить {1, 0} → и {0, -1} ↑
+
+        Vec2i neighbor1, neighbor2;
+
+        switch (directionIndex) {
+            case 4: // ↖
+                neighbor1 = {coordinates_.x + 1, coordinates_.y};  // →
+                neighbor2 = {coordinates_.x, coordinates_.y + 1};  // ↓
+                break;
+            case 5: // ↘
+                neighbor1 = {coordinates_.x - 1, coordinates_.y};  // ←
+                neighbor2 = {coordinates_.x, coordinates_.y - 1};  // ↑
+                break;
+            case 6: // ↙
+                neighbor1 = {coordinates_.x + 1, coordinates_.y};  // →
+                neighbor2 = {coordinates_.x, coordinates_.y - 1};  // ↑
+                break;
+            case 7: // ↗
+                neighbor1 = {coordinates_.x - 1, coordinates_.y};  // ←
+                neighbor2 = {coordinates_.x, coordinates_.y + 1};  // ↓
+                break;
+        }
+
+        // Проверяем соседние клетки на препятствия
+        // Но НЕ проверяем на выход за границы для соседних клеток
+        // при проверке диагональных углов
+        long mapIndex1 = coordinateToMapIndex(neighbor1);
+        long mapIndex2 = coordinateToMapIndex(neighbor2);
+
+        if (wallsMap.find(mapIndex1) != wallsMap.end() ||
+            wallsMap.find(mapIndex2) != wallsMap.end()) {
+            return true;
+        }
+    }
+
+    return false;
 }
