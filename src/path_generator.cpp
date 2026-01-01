@@ -121,6 +121,7 @@ void PathGenerator::pathUpdation()
     _orientedPathSimpl = _orientNonRespectPath(_path);
 
     if(_holes != nullptr) {
+        pfc->init(*_holes);
         for (int i = 0; i < _bpd_decompositionCells->count(); ++i) {
             auto res = _pathSegmRelationToCell(_bpd_decompositionCells->at(i));
             QList<QList<QPointF>> resPointList = _orientNonRespectPath(res);
@@ -149,9 +150,15 @@ QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const Q
         return res;
     res.append(iter.value());
     ++iter;
-    pfc->perform(first, sec, _gridSpace);
+    if(iter.value().count() != 0)
+        sec = iter.value().first().first();
+    else
+        return res;
+    pfc->perform(first, sec);
     auto pathBuff = pfc->getPath2d();
+    std::cout << "[_pathRouteBetweenCells] size path before uni " << pathBuff.count() << std::endl;
     pathBuff = uniformSample(pathBuff, 4);
+    std::cout << "[_pathRouteBetweenCells] size path after uni " << pathBuff.count() << std::endl;
     if (pathBuff.count() != 0)
         res += pathBuff;
     res.append(iter.value());
@@ -194,7 +201,6 @@ void PathGenerator::setPolyHolesList(const QList<QPolygonF>& in)
 {
     _holes = &in;
     _isHolesActive = !_isHolesActive;
-    pfc->init(*_holes);
 }
 
 void PathGenerator::setSurvPoly(const QPolygonF& in)
@@ -665,7 +671,7 @@ QLineF testL;
             for (const auto &curr: currList[i]) {
                 testL = QLineF{lastAdd, curr.first};
                 testL = extendLineBothWays(testL, 10);
-                pfc->perform(testL.p1(), testL.p2(), _gridSpace);
+                pfc->perform(testL.p1(), testL.p2());
                 auto pathBuff = pfc->getPath2d();
                 pathBuff = uniformSample(pathBuff,4);
                 buffL.append(pathBuff);

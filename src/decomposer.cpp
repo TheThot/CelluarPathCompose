@@ -754,7 +754,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
             flag3 = updateOrientedLine3(copy);
         }
 
-    std::cout << "[boustrophedonDecomposition] here " <<  check << std::endl;
+//    std::cout << "[boustrophedonDecomposition] here " <<  check << std::endl;
 
     QPolygonF buff;
     if(check > 0) {
