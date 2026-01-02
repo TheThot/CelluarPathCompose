@@ -15,6 +15,8 @@ public:
 
     void init(const QList<QPolygonF> &obstacles);
 
+    void init(const QList<QPolygonF> &obstacles, int wrldX, int wrldY);
+
     void perform(const QPointF &pointFrom, const QPointF &pointTo);
 
     QList<QPointF> getPath2d();
