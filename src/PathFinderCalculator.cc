@@ -6,6 +6,7 @@
 #include <QLineF>
 
 const int PathFinderCalculator::_worldOffset{2};
+const double PathFinderCalculator::_scale{0.5};
 
 PathFinderCalculator::PathFinderCalculator() {
     clear();
@@ -54,6 +55,8 @@ AStar::Vec2i PathFinderCalculator::specifyVolume(const QRectF& intoArea)
     int resX, resY;
     resX = std::ceil(std::abs(intoArea.width()));
     resY = std::ceil(std::abs(intoArea.height()));
+    resX *= _scale;
+    resY *= _scale;
     return AStar::Vec2i{resX, resY};
 }
 
@@ -65,6 +68,8 @@ void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, i
 void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, int &yWorld, const QRectF& iniArea) {
     xWorld = std::trunc( x - iniArea.bottomLeft().x() ); /*/ _scaleX)*/
     yWorld = std::trunc( y - iniArea.bottomLeft().y() ); /*/ _scaleY)*/
+    xWorld *= _scale;
+    yWorld *= _scale;
 }
 
 
@@ -75,7 +80,7 @@ QPointF PathFinderCalculator::backsideCoordConversion(int xWorld, int yWorld)
 
 QPointF PathFinderCalculator::backsideCoordConversion(int xWorld, int yWorld, const QRectF& iniArea)
 {
-    return QPointF(xWorld /** _scaleX*/ + iniArea.bottomLeft().x(), yWorld /** _scaleY*/ + iniArea.bottomLeft().y());
+    return QPointF(xWorld / _scale + iniArea.bottomLeft().x(), yWorld / _scale + iniArea.bottomLeft().y());
 }
 
 void PathFinderCalculator::buildPath2d() {
