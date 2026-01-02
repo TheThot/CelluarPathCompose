@@ -121,13 +121,16 @@ void PathGenerator::pathUpdation()
     _orientedPathSimpl = _orientNonRespectPath(_path);
 
     if(_holes != nullptr) {
-        pfc->init(*_holes);
+        //pfc->init(*_holes);
+        pfc->init(*_holes, 600, 600);
         for (int i = 0; i < _bpd_decompositionCells->count(); ++i) {
             auto res = _pathSegmRelationToCell(_bpd_decompositionCells->at(i));
             QList<QList<QPointF>> resPointList = _orientNonRespectPath(res);
+            if (resPointList.isEmpty())
+                std::cout << "Bad section 0\n";
             _pathIntoCell[&_bpd_decompositionCells->at(i)] = resPointList;
-            if(resPointList.count() != 0)
-                _pathRespectHoles += resPointList;
+            /*if(resPointList.count() != 0)
+                _pathRespectHoles += resPointList;*/
         }
         /*auto iter = _pathIntoCell.begin();
         while(iter != _pathIntoCell.end()) {
@@ -152,12 +155,14 @@ QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const Q
 
     // Если первый элемент пуст, возвращаем пустой результат
     if (firstCellPaths.isEmpty()) {
+        std::cout << "Bad section 3\n";
         return result;
     }
 
     // Получаем первую точку из последнего сегмента первого элемента
     const auto& lastSegment = firstCellPaths.last();
     if (lastSegment.size() < 2) {
+        std::cout << "Bad section 4\n";
         return result;
     }
 
@@ -166,11 +171,13 @@ QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const Q
     // Обрабатываем первый элемент
     result.append(firstCellPaths);
 
+    int counter = 0;
     // Обрабатываем остальные элементы
     for (++it; it != inPath.constEnd(); ++it) {
         const auto& currentPaths = it.value();
 
         if (currentPaths.isEmpty()) {
+            std::cout << "Bad section 1\n";
             continue;
         }
 
@@ -183,9 +190,13 @@ QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const Q
             auto connectionPath = pfc->getPath2d();
 
             if (!connectionPath.isEmpty()) {
-                connectionPath = adaptiveSample(connectionPath);
+                // connectionPath = adaptiveSample(connectionPath);
                 result.append(connectionPath);
             }
+        }
+        else
+        {
+            std::cout <<  "Bad section" << std::endl;
         }
 
         // Добавляем пути текущего элемента
@@ -196,6 +207,10 @@ QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const Q
         if (lastSegment.size() >= 2) {
             prevConnectionPoint = lastSegment.last();
         }
+
+        counter++;
+        if (counter == inPath.count() - 5)
+            break;
     }
 
     return result;
@@ -214,6 +229,7 @@ void PathGenerator::setPolyHolesList(const QList<QPolygonF>& in)
 {
     _holes = &in;
     _isHolesActive = !_isHolesActive;
+    //pfc->init(*_holes, 600, 600);
 }
 
 void PathGenerator::setSurvPoly(const QPolygonF& in)
