@@ -126,8 +126,8 @@ void PathGenerator::pathUpdation()
             auto res = _pathSegmRelationToCell(_bpd_decompositionCells->at(i));
             QList<QList<QPointF>> resPointList = _orientNonRespectPath(res);
             _pathIntoCell[&_bpd_decompositionCells->at(i)] = resPointList;
-            /*if(resPointList.count() != 0)
-                _pathRespectHoles += resPointList;*/
+            if(resPointList.count() != 0)
+                _pathRespectHoles += resPointList;
         }
         /*auto iter = _pathIntoCell.begin();
         while(iter != _pathIntoCell.end()) {
@@ -140,59 +140,66 @@ void PathGenerator::pathUpdation()
 }
 
 QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath){
-    QList<QList<QPointF>> res = {};
 
-    auto iter = inPath.begin();
-    QPointF first, sec;
-    auto currPath = iter.value();
-    if(currPath.count() != 0) {
-        auto currLine = currPath[currPath.count()-1];
-        first = QLineF(currLine[currLine.count()-2], currLine[currLine.count()-1]).pointAt(0.95);
-    }
-    else
-        return res;
-    res.append(iter.value());
-    ++iter;
-    currPath = iter.value();
-    if(iter.value().count() != 0) {
-        auto currLine = currPath[0];
-        sec = QLineF(currLine[0], currLine[1]).pointAt(0.05);
-    }
-    else
-        return res;
-    pfc->perform(first, sec);
-    auto pathBuff = pfc->getPath2d();
-    std::cout << "[_pathRouteBetweenCells] size path before uni " << pathBuff.count() << std::endl;
-    pathBuff = uniformSample(pathBuff, 4);
-    std::cout << "[_pathRouteBetweenCells] size path after uni " << pathBuff.count() << std::endl;
-    if (pathBuff.count() != 0)
-        res += pathBuff;
-    res.append(iter.value());
+    QList<QList<QPointF>> result;
 
-    /*auto iter = inPath.begin();
-    QPointF first, sec;
-    if(iter.value().count() != 0)
-        first = iter.value().last().last();
-    while(iter != inPath.end()){
-        auto currPath = iter.value();
-        if(currPath.count() != 0) {
-            res += currPath;
-            if(iter != inPath.begin()) {
-                sec = currPath[0][0];
-                pfc->perform(first, sec);
-                auto pathBuff = pfc->getPath2d();
-                pathBuff = uniformSample(pathBuff, 4);
-                first = currPath.last().last();
-                if (pathBuff.count() != 0)
-                    res += pathBuff;
-                else
-                    std::cout << "[_pathRouteBetweenCells] pathBuff is null " << std::endl;
+    if (inPath.isEmpty()) {
+        return result;
+    }
+
+    auto it = inPath.constBegin();
+    const auto firstCellPaths = it.value();
+
+    // Если первый элемент пуст, возвращаем пустой результат
+    if (firstCellPaths.isEmpty()) {
+        return result;
+    }
+
+    // Получаем первую точку из последнего сегмента первого элемента
+    const auto& lastSegment = firstCellPaths.last();
+    if (lastSegment.size() < 2) {
+        return result;
+    }
+
+    QPointF prevConnectionPoint = lastSegment.last();
+
+    // Обрабатываем первый элемент
+    result.append(firstCellPaths);
+
+    // Обрабатываем остальные элементы
+    for (++it; it != inPath.constEnd(); ++it) {
+        const auto& currentPaths = it.value();
+
+        if (currentPaths.isEmpty()) {
+            continue;
+        }
+
+        // Добавляем соединение между предыдущим и текущим элементом
+        const auto& firstSegment = currentPaths.first();
+        if (firstSegment.size() >= 2) {
+            QPointF currentConnectionPoint = firstSegment.first();
+
+            pfc->perform(prevConnectionPoint, currentConnectionPoint);
+            auto connectionPath = pfc->getPath2d();
+
+            if (!connectionPath.isEmpty()) {
+                connectionPath = adaptiveSample(connectionPath);
+                result.append(connectionPath);
             }
         }
-        ++iter;
-    }*/
 
-    return res;
+        // Добавляем пути текущего элемента
+        result.append(currentPaths);
+
+        // Обновляем точку соединения для следующей итерации
+        const auto& lastSegment = currentPaths.last();
+        if (lastSegment.size() >= 2) {
+            prevConnectionPoint = lastSegment.last();
+        }
+    }
+
+    return result;
+
 }
 
 QList<QLineF> PathGenerator::_pathSegmRelationToCell(const QPolygonF& inPoly){

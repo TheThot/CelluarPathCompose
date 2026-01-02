@@ -172,8 +172,13 @@ namespace baseFunc {
                 return QLineF(line.p1(), pointStart).length() < QLineF(line.p1(), pointEnd).length();
             });
 
-            for (int j=0; j+1<intersections.count(); j+=2)
-                resultLines.append(QLineF(intersections[j], intersections[j+1]));
+            for (int j=0; j+1<intersections.count(); j+=2) {
+                // делаем их чуть короче
+                auto temp = QLineF(intersections[j], intersections[j + 1]);
+                temp.setP1(temp.pointAt(0.1));
+                temp.setP2(temp.pointAt(0.9));
+                resultLines.append(temp);
+            }
         }
 
         if (!resultLines.isEmpty()) {
@@ -478,6 +483,50 @@ namespace baseFunc {
             }
         }
 
+        return result;
+    }
+
+    // Адаптивная выборка: сохраняем точки с большим изменением направления
+    static QList<QPointF> adaptiveSample(const QList<QPointF>& points,
+                                         double angleThreshold = 15.0,
+                                         int minPoints = 10) {
+        if (points.size() < 3) return points;
+
+        QList<QPointF> result;
+        result.append(points.first());
+
+        // Всегда сохраняем первую и последнюю точки
+        for (int i = 1; i < points.size() - 1; i++) {
+            QPointF prev = points[i-1];
+            QPointF curr = points[i];
+            QPointF next = points[i+1];
+
+            // Вычисляем угол между векторами
+            QPointF v1(curr.x() - prev.x(), curr.y() - prev.y());
+            QPointF v2(next.x() - curr.x(), next.y() - curr.y());
+
+            double dot = v1.x() * v2.x() + v1.y() * v2.y();
+            double mag1 = std::sqrt(v1.x() * v1.x() + v1.y() * v1.y());
+            double mag2 = std::sqrt(v2.x() * v2.x() + v2.y() * v2.y());
+
+            if (mag1 > 0 && mag2 > 0) {
+                double cosAngle = dot / (mag1 * mag2);
+                cosAngle = qBound(-1.0, cosAngle, 1.0);
+                double angle = std::acos(cosAngle) * 180.0 / M_PI;
+
+                if (angle > angleThreshold) {
+                    // Резкое изменение направления - сохраняем точку
+                    result.append(curr);
+                }
+            }
+
+            // Гарантируем минимальное количество точек
+            if (result.size() < minPoints && i % (points.size() / minPoints) == 0) {
+                result.append(curr);
+            }
+        }
+
+        result.append(points.last());
         return result;
     }
 
