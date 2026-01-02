@@ -29,7 +29,8 @@ void PathFinderCalculator::perform(const QPointF &pointFrom, const QPointF &poin
     _pointFrom2d = pointFrom;
     _pointTo2d = pointTo;
     buildPath2d();
-    simplifyPath2dByIntersect();
+    /*if(_path2d.count() != 0)
+        simplifyPath2dByIntersect();*/
 }
 
 void PathFinderCalculator::clear() {
@@ -44,36 +45,37 @@ void PathFinderCalculator::initGenerator() {
     _generator.setWorldSize(specifyVolume(_pathArea));
     _generator.setHeuristic(AStar::Heuristic::octagonal);
     _generator.setDiagonalMovement(true);
+//    _generator.allowMovementAlongBorders(true);
 }
 
 AStar::Vec2i PathFinderCalculator::specifyVolume(const QRectF& intoArea)
 {
     //так как в алгоритме Astar числа веществ проводим масштабирование
     int resX, resY;
-    resX = std::ceil(std::abs(intoArea.width())) + 2*_worldOffset;
-    resY = std::ceil(std::abs(intoArea.height())) + 2*_worldOffset;
+    resX = std::ceil(std::abs(intoArea.width()));
+    resY = std::ceil(std::abs(intoArea.height()));
     return AStar::Vec2i{resX, resY};
 }
 
 void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, int &yWorld) {
-    xWorld = std::trunc(x /*/ _scaleX*/) + _worldOffset;
-    yWorld = std::trunc(y /*/ _scaleY*/) + _worldOffset;
+    xWorld = std::trunc(x /*/ _scaleX*/);
+    yWorld = std::trunc(y /*/ _scaleY*/);
 }
 
 void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, int &yWorld, const QRectF& iniArea) {
-    xWorld = std::trunc( x - iniArea.bottomLeft().x() ) + _worldOffset; /*/ _scaleX)*/
-    yWorld = std::trunc( y - iniArea.bottomLeft().y() ) + _worldOffset; /*/ _scaleY)*/
+    xWorld = std::trunc( x - iniArea.bottomLeft().x() ); /*/ _scaleX)*/
+    yWorld = std::trunc( y - iniArea.bottomLeft().y() ); /*/ _scaleY)*/
 }
 
 
 QPointF PathFinderCalculator::backsideCoordConversion(int xWorld, int yWorld)
 {
-    return QPointF(xWorld - _worldOffset /** _scaleX*/, yWorld - _worldOffset /** _scaleY*/);
+    return QPointF(xWorld /** _scaleX*/, yWorld /** _scaleY*/);
 }
 
 QPointF PathFinderCalculator::backsideCoordConversion(int xWorld, int yWorld, const QRectF& iniArea)
 {
-    return QPointF(xWorld - _worldOffset /** _scaleX*/ + iniArea.bottomLeft().x(), yWorld - _worldOffset /** _scaleY*/ + iniArea.bottomLeft().y());
+    return QPointF(xWorld /** _scaleX*/ + iniArea.bottomLeft().x(), yWorld /** _scaleY*/ + iniArea.bottomLeft().y());
 }
 
 void PathFinderCalculator::buildPath2d() {
@@ -107,6 +109,38 @@ void PathFinderCalculator::buildPath2d() {
     //_path2d std::movepathPoints;
 }
 
+
+QList<QPoint> PathFinderCalculator::bresenham_line(const QPoint& p0, const QPoint& p1){
+    QList<QPoint> temp = {};
+    QLine line = QLine(p0, p1);
+    int dx = std::abs(line.dx());
+    int dy = std::abs(line.dy());
+    int sx = p0.x() < p1.x() ? 1 : - 1;
+    int sy = p0.y() < p1.y() ? 1 : - 1;
+    int err = dx - dy;
+
+    bool flag = true;
+    QPoint curr = p0;
+    while(flag){
+        temp.append(curr);
+
+        if(curr.x() == p1.x() && curr.y() == p1.y()){
+            flag = false;
+        }
+
+        int e2 = 2 * err;
+        if( e2 > -dy ) {
+            err -= dy;
+            curr.setX(curr.x() + sx);
+        }
+        if( e2 < dx ) {
+            err += dx;
+            curr.setY(curr.y() + sy);
+        }
+    }
+    return temp;
+}
+
 void PathFinderCalculator::initCollisions(const QRectF& area) {
     QList<QPoint> temp = {};
     double step = 1e-5;
@@ -132,13 +166,12 @@ void PathFinderCalculator::initCollisions(const QRectF& area) {
 
 void PathFinderCalculator::initCollisions() {
     QList<QPoint> temp = {};
-    double step = 1e-3;
     int xWrld, yWrld;
     for(const auto & obst: _obstacles2d){
         for(int i = 0; i < obst.count(); ++i){
             QLineF buff = QLineF(obst[i], obst[(i+1)%obst.count()]);
-            for(double j = 0; j <= 1; j+=step){
-                auto res = buff.pointAt(j);
+            auto bl = bresenham_line(QPoint(buff.p1().x(), buff.p1().y()), QPoint(buff.p2().x(), buff.p2().y()));
+            for(const auto& res: bl){
                 getWorldCoordinate(res.x(), res.y(), xWrld, yWrld, _pathArea);
                 QPoint resI = QPoint(xWrld, yWrld);
                 if(!temp.contains(resI))

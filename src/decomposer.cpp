@@ -18,7 +18,7 @@ Decomposer::Decomposer(QObject *parent)
 {
     //создание созависимых сперва
     _transects = new PathGenerator(_trWidth, m_sweepAngle, this);
-    connect(this, &Decomposer::sweepAngleChanged, _transects, &PathGenerator::pathUpdation);
+//    connect(this, &Decomposer::sweepAngleChanged, _transects, &PathGenerator::pathUpdation);
     connect(this, &Decomposer::originalPolygonChanged, this, [this] (){
         _transects->setSurvPoly(m_originalPolygon);
     });
@@ -195,7 +195,7 @@ void Decomposer::updateDecomposition() {
     _transects->setPolyBoundary(m_orientedRect);
     _transects->setDecomposeStruct(_holeData);
     _transects->setPathSegments(m_bpd_decompositionCells);
-//    _transects->pathUpdation();
+    _transects->pathUpdation();
 
     emit decompositionCellsChanged();
     emit orientedRectChanged();
@@ -1032,7 +1032,7 @@ void Decomposer::setTransectWidth(double w) {
 
     _trWidth = w;
     transects()->setTransectWidth(_trWidth);
-    _transects->pathUpdation();
+//    _transects->pathUpdation();
     emit trWdthChanged();
 }
 

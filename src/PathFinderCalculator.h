@@ -52,4 +52,6 @@ private:
     void getWorldCoordinate(double x, double y, int &xWorld, int &yWorld, const QRectF& iniArea);
     QPointF backsideCoordConversion(int xWorld, int yWorld);
     QPointF backsideCoordConversion(int xWorld, int yWorld, const QRectF& iniArea);
+
+    QList<QPoint> bresenham_line(const QPoint& p0, const QPoint& p1);
 };
