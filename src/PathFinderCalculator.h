@@ -27,6 +27,7 @@ private:
     double _wrldY;
     QRectF _pathArea;
     static const int _worldOffset;
+    static const double _scale;
 
     QPointF _pointFrom2d;
     QPointF _pointTo2d;
