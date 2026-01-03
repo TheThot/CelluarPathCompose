@@ -25,8 +25,10 @@ PathGenerator::PathGenerator(double inStep, double inAngle, QObject *parent) :
 QList<QLineF> PathGenerator::_initNonRespectInnerHoles(const QPolygonF* inPoly)
 {
     QList<QLineF> res = {};
-    if(inPoly == nullptr)
+    if(inPoly == nullptr) {
+        std::cout << "[_initNonRespectInnerHoles] warning\n";
         return res;
+    }
 
     // формируем полное покрытие полигона
     QPointF center;
@@ -113,22 +115,21 @@ void PathGenerator::pathUpdation()
 {
     _path.clear();
     _pathRespectHoles.clear();
-    _pathRespectHolesWithNum.clear();
-    _holeMannerPathSegm.clear();
     _pathIntoCell.clear();
 
     _path = _initNonRespectInnerHoles(_survPolygon);
     _orientedPathSimpl = _orientNonRespectPath(_path);
 
     if(_holes != nullptr) {
+        std::cout << "[PathGenerator] _bpd_decompositionCells count is " << _bpd_decompositionCells->count() << std::endl;
         //pfc->init(*_holes);
-        pfc->init(*_holes, 600, 600);
+        pfc->init(*_holes);
         for (int i = 0; i < _bpd_decompositionCells->count(); ++i) {
             auto res = _pathSegmRelationToCell(_bpd_decompositionCells->at(i));
             QList<QList<QPointF>> resPointList = _orientNonRespectPath(res);
-            if (resPointList.isEmpty())
-                std::cout << "Bad section 0\n";
-            _pathIntoCell[&_bpd_decompositionCells->at(i)] = resPointList;
+            if (!resPointList.isEmpty())
+                _pathIntoCell[&_bpd_decompositionCells->at(i)] = resPointList;
+
             /*if(resPointList.count() != 0)
                 _pathRespectHoles += resPointList;*/
         }
@@ -190,7 +191,7 @@ QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const Q
             auto connectionPath = pfc->getPath2d();
 
             if (!connectionPath.isEmpty()) {
-                // connectionPath = adaptiveSample(connectionPath);
+                connectionPath = adaptiveSample(connectionPath);
                 result.append(connectionPath);
             }
         }
@@ -208,13 +209,55 @@ QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const Q
             prevConnectionPoint = lastSegment.last();
         }
 
-        counter++;
-        if (counter == inPath.count() - 5)
-            break;
     }
 
     return result;
 
+}
+
+QHash<const QPolygonF*, QList<QList<QPointF>>> PathGenerator::_configurePathIntoCell(
+    QHash<const QPolygonF*, int>& order, QHash<const QPolygonF*, QPair<QPointF, QPointF>>& flP)
+{
+    QHash<const QPolygonF*, QList<QList<QPointF>>> res;
+    if (_pathIntoCell.count() == 0)
+    {
+        std::cout << "Warning path hash is null\n";
+        return res;
+    }
+    // формируем массив с расстояниями от начала одной до конца другой из qhash
+    QVector<const QPolygonF*> allIn;
+    for (auto itOne = _pathIntoCell.constBegin(); itOne != _pathIntoCell.constBegin(); ++itOne)
+    {
+        allIn.push_back(itOne.key());
+    }
+    auto stackIter = allIn.constBegin();
+    auto currCell = allIn.last();
+    allIn.pop_back();
+    auto prevPath = _pathIntoCell[currCell];
+    double distance, distanceMin;
+    int counter = 0;
+    order[currCell] = counter;
+    const QPolygonF* currP;
+    while (allIn.empty() == false)
+    {
+        ++counter;
+        distanceMin = 1e9;
+        while (stackIter != allIn.constEnd())
+        {
+            auto currPath = _pathIntoCell[*stackIter];
+            distance = QLineF(prevPath.first().first(), currPath.last().last()).length();
+            if (distance < distanceMin)
+            {
+                distanceMin = distance;
+                currP = *stackIter;
+                order[currP] = counter;
+            }
+            ++stackIter;
+        }
+        allIn.removeOne(currP);
+        stackIter = allIn.constBegin();
+    }
+    return res;
 }
 
 QList<QLineF> PathGenerator::_pathSegmRelationToCell(const QPolygonF& inPoly){
@@ -229,7 +272,7 @@ void PathGenerator::setPolyHolesList(const QList<QPolygonF>& in)
 {
     _holes = &in;
     _isHolesActive = !_isHolesActive;
-    //pfc->init(*_holes, 600, 600);
+    //pfc->init(*_holes);
 }
 
 void PathGenerator::setSurvPoly(const QPolygonF& in)
@@ -240,106 +283,6 @@ void PathGenerator::setSurvPoly(const QPolygonF& in)
 void PathGenerator::setPolyBoundary(const QPolygonF& in)
 {
     _polyBoundary = &in;
-}
-
-QList<QList<QPointF>> PathGenerator::_initLinesRespectHoles(QList<QList<QPair<QPointF,int>>>& pathRespectHolesWithNum)
-{
-    QList<QList<QPointF>> res = {};
-    if(_holes == nullptr)
-        return res;
-
-    int counter = 0;
-    QLineF holeL;
-    QPair<QPointF,int> buffPr = {};
-//    pathRespectHolesWithNum.reserve(_path.count());
-    for(int i = 0; i < _path.count(); ++i)
-        pathRespectHolesWithNum.append(QList<QPair<QPointF,int>>{});
-    for (const auto& currTransect : _path)
-    {
-        int j = 1;
-        QList<int> resHoleNum;
-        QList<QPointF> resI;
-        QList<QPointF> buff;
-        QList<double> dist;
-        buff.append(currTransect.p1());
-        buffPr.first = currTransect.p1(); buffPr.second = 0;
-        pathRespectHolesWithNum[counter].append(buffPr);
-        for (const auto& currHolePoly: *_holes)
-        {
-            for (int i = 0; i < currHolePoly.count(); ++i)
-            {
-                int k = (i + 1) % currHolePoly.count();
-                holeL = QLineF(currHolePoly[i], currHolePoly[k]);
-                //res - все пересечения линии с любыми _holes
-                if(intersectionListFormimgRoutine(currTransect, holeL, resI, QLineF::BoundedIntersection))
-                    resHoleNum.append(j);
-            }
-            ++j;
-        }
-        // сразу buff пересечений класть в _pathRespectHoles нельзя
-        // сперва отсортировать по расстояниям
-        for(const auto& oneIntersection:resI){
-            holeL = QLineF(currTransect.p1(), oneIntersection);
-            dist.append(holeL.length());
-        }
-        auto idx = sort_indexes<double>(dist); // отсортированы по индесам однозначно resI и resHoleNum
-        j = -1;
-        for(const auto& currI:idx){
-            buff.append(resI[currI]);
-            buffPr.first = resI[currI]; buffPr.second = j*resHoleNum[currI];
-            pathRespectHolesWithNum[counter].append(buffPr);
-            j *= -1;
-        }
-        buff.append(currTransect.p2());
-        buffPr.first = currTransect.p2(); buffPr.second = 0;
-        pathRespectHolesWithNum[counter].append(buffPr);
-//        std::cout << "[_initLinesRespectHoles] buff length is " << buff.count() << std::endl;
-        res.append(buff);
-        ++counter;
-    }
-
-    return res;
-}
-
-//функция по сути преобразует сложные комбинации типов хранящие информацию о структуре SurvPoly в _pathRespectHoles которое выдаются qml интерфейсу
-QList<QList<QPointF>> PathGenerator::_drawComplexCoverPathSequence(){
-    // preprocess _pathRespectHolesWithNum and construct info var pathCoverProgress
-    _pcp.totalTransects = 0;
-    _pcp.numRows = _pathRespectHolesWithNum.count();
-    for(const auto & tr: _pathRespectHolesWithNum){
-        _pcp.totalTransects += tr.count();
-    }
-    int buffCount = 0;
-    for(int holeCount = 0; holeCount < _holes->count(); ++holeCount){
-        QPolygonF* ptr = &const_cast<QPolygonF&>(_holes->at(holeCount));
-        auto currCells = _decompose->holeToBCD[ptr];
-        for(const auto & tr: _pathRespectHolesWithNum){
-            for(const auto& p:tr) {
-                if (p.second == holeCount) // нашли сегмент пересек интересующую зону
-                    ++buffCount;
-            }
-        }
-        _pcp.zoneLoadRate.insert(currCells.first, QPair<int,double>{1,0.5});
-        _pcp.zoneLoadRate.insert(currCells.second, QPair<int,double>{2,0.1});
-        buffCount = 0;
-    }
-    // чередование направления линий змейкой
-    bool reverse = false;
-    QList<QList<QPointF>> res;
-    for(const auto& row: _pathRespectHolesWithNum){ // row - список пар (точка, hole intersect) hole intersect = - 1 на краях SurvPoly
-        QList<QPointF> buffL, adjL;
-        for(const auto& p:row){
-            if(p.second == -1){
-                buffL.append(p.first);
-            }else{
-                buffL.clear();
-            }
-        }
-        _adjustToLawnower_oneVectorCase(buffL, adjL, reverse);
-        res.append(adjL);
-    }
-
-    return res;
 }
 
 void PathGenerator::_qDebugPrintPath(const QList<QList<QPointF>>& pathData){
@@ -569,204 +512,6 @@ QList<QList<QPointF>> PathGenerator::_orientNonRespectPath(const QList<QLineF>& 
 
 void PathGenerator::setTransectWidth(double in) {
     _gridSpace = in;
-}
-
-QMap<int,QList<QList<QPair<QPointF,int>>>> PathGenerator::_preProcRespectInnerHoles()
-{
-    //как показывает практика ориентация direct reverse пути змейки не зависит от конфигурации survPoly и holes
-    //и формирование направления у _pathRespectHolesWithNum может быть выполнено предварительно
-    bool reverse = false;
-    for(auto& row: _pathRespectHolesWithNum) {
-        QList<QPair<QPointF, int>> buffL;
-        if (!reverse) {
-            auto rowI = row.begin();
-            while(rowI != row.end()) {
-                buffL.append(*rowI);
-                ++rowI;
-            }
-        }
-        else {
-            auto rowIr = row.rbegin();
-            while(rowIr != row.rend()) {
-                buffL.append(*rowIr);
-                ++rowIr;
-            }
-        }
-        row = buffL;
-        reverse = !reverse;
-    }
-
-    // формируем новый массив на базе _pathRespectHolesWithNum суть та же но теперь по key {номер бесполётной и сторона}
-    // можно получить доступ к списку segm вокруг бесполётной
-    // поскольку все развернули то ветви if(row[i].second < 0) append так if(row[i].second > 0) сяк
-    QMap<int,QList<QList<QPair<QPointF,int>>>> res = {};
-    int reverseI = (-1);
-    for(auto& lineSegments: _pathRespectHolesWithNum){
-        reverseI *= (-1);
-        for(int i = 0; i < lineSegments.count(); ++i){
-            if(lineSegments[i].second != 0){
-                auto buff = res[lineSegments[i].second];
-
-                auto line = QList<QPair<QPointF,int>>{};
-
-                if(reverseI*lineSegments[i].second < 0)
-                    line += lineSegments[i-1];
-
-                line += lineSegments[i];
-
-                if(reverseI*lineSegments[i].second > 0)
-                    line += lineSegments[i+1];
-
-                buff.append(line);
-
-                res.insert(lineSegments[i].second, buff);
-            }
-        }
-    }
-
-    return res;
-}
-
-bool PathGenerator::_updateCountRule(){
-    bool rule;
-
-    if(_holes == nullptr){
-        return false;
-    }
-
-    // первые holes.count * 2 _bpd_decompositionCells это U и D каждой Cell
-    QList<QRectF> check;
-    for(int i = 0; i < _holes->count() * 2; ++i){
-        check.append(_bpd_decompositionCells->at(i).boundingRect());
-    }
-    QList<QRectF> check2;
-    for(int i = 0; i < _holes->count() * 2; i+=2){
-        check2.append(check[i].united(check[i+1]));
-    }
-    QList<double> squareHolesSection;
-    for(int i = 0; i < check2.count(); ++i) {
-        squareHolesSection.append(check2[i].height()*check2[i].width());
-    }
-    double sumSq = 0;
-    double max = 0;
-    for(int i = 0; i < check2.count(); ++i) {
-        if(max < squareHolesSection[i])
-            max = squareHolesSection[i];
-        sumSq += squareHolesSection[i];
-    }
-    QRectF whole;
-    for(int i = 0; i < check2.count()-1; ++i) {
-        if(i == 0)
-            whole = check2[i].united(check2[i+1]);
-        else
-            whole = whole.united(check2[i+1]);
-    }
-    double squareWhole = whole.width()*whole.height();
-    _ruleRate =  squareWhole / sumSq;
-    _ruleRate = std::clamp<double>(_ruleRate, 0, 1);
-    // false - max, true - sum
-    if(squareWhole > max)
-        rule = true;
-    else
-        rule = false;
-
-    return rule;
-}
-
-int PathGenerator::goTroughtHoleDirectProc(QVector<int>& holesNumStack, QList<QList<QPointF>>& res) // -> return numrows
-{
-    // рекурсивный алгоритм добавления сегментов вокруг бесполётной зоны
-    // рекурсия смотрит закончена ли сторона ? определяемая QPair<QPointF, int> + и - разные стороны у номера hole
-    // рекурсия смотрит есть ли у текущих сегментов смежные с другими hole области все они добавляются в стек holesNumStack
-    if (holesNumStack.count() < 1)
-        return 0;
-    int currSideNum = holesNumStack.last();
-    /*std::cout << " ======== start ========" << std::endl;
-    for(const auto& hs: holesNumStack){
-        std::cout << " holesNumStack is " << hs;
-    }
-    std::cout << "\n ======== end ========" << std::endl;*/
-    bool triggerRule = true;
-    int revers = -1;
-    int skeepRowNums = 0;
-QLineF testL;
-    int sum = 0;
-    auto lastAdd = res.last()[1];
-    for(int k = 0; k < 2; ++k) {
-        revers *= -1;
-        auto currList = _holeMannerPathSegm[revers*currSideNum];
-        for(int i = k; i < currList.count(); ++i){
-            QList<QPointF> buffL;
-            for (const auto &curr: currList[i]) {
-                testL = QLineF{lastAdd, curr.first};
-                testL = extendLineBothWays(testL, 10);
-                pfc->perform(testL.p1(), testL.p2());
-                auto pathBuff = pfc->getPath2d();
-                pathBuff = uniformSample(pathBuff,4);
-                buffL.append(pathBuff);
-                res.append(buffL);
-                return 0;
-                if (curr.second != 0) {  // другая точка сообщает есть ли рядом другие зоны
-                    if(!holesNumStack.contains((-1) * curr.second) || !holesNumStack.contains(curr.second)) {
-                        holesNumStack.push_back(curr.second);
-                        holesNumStack.push_back((-1) * curr.second);
-                        res.append(buffL);
-                        triggerRule = false;
-                        skeepRowNums = goTroughtHoleDirectProc(holesNumStack, res);
-                        i += skeepRowNums;
-                    }
-                }
-            }
-            if (triggerRule) {
-                res.append(buffL);
-            } else {
-                triggerRule = true;
-            }
-        }
-    }
-    if(_currRule)
-        skeepRowNums += _holeMannerPathSegm[revers * currSideNum].count() - 1;
-    else
-        skeepRowNums = std::max(skeepRowNums, _holeMannerPathSegm[revers * currSideNum].count() - 1);
-
-    //holesNumStack.pop_back();
-    //holesNumStack.pop_back(); // удаление из стека для остановки рекурсии
-    return skeepRowNums;
-}
-
-QList<QList<QPointF>> PathGenerator::_pathProcRespectInnerHoles()
-{
-    _holesNumStack.clear(); // храним текущую сторону - или + и номер бесполётной
-    QList<QList<QPointF>> res; // список линий QList<QPointF>
-    bool flag = false;
-    for(int i = 0; i < _pathRespectHolesWithNum.count(); ++i){ // row - список пар (точка, hole intersect) hole intersect = - 1 на краях SurvPoly
-        auto currRow = _pathRespectHolesWithNum[i];
-        auto rowI = currRow.begin();
-        QList<QPointF> buffL;
-        while(rowI != currRow.end()) {
-            buffL += rowI->first;
-            if(rowI->second != 0){ // наткнулись на hole
-                if(!_holesNumStack.contains((-1) * rowI->second) || !_holesNumStack.contains(rowI->second)) {
-                    flag = true;
-                    auto num = rowI->second;
-                    _holesNumStack.push_back(num);
-                    _holesNumStack.push_back((-1) * num);
-                    res.append(buffL);
-                    //по выходу с рекурсии корректируем счётчик внешнего цикла i (так как много строк связанных с holes добавлено функцией)
-                    i += goTroughtHoleDirectProc(_holesNumStack, res); // уходим в рекурсию
-                    //break;
-                    return res;
-                }
-            }
-            ++rowI;
-        }
-        if(!flag) {
-            res.append(buffL);
-        }else{
-            flag = false;
-        }
-    }
-    return res;
 }
 
 void PathGenerator::setPathSegments(const QList<QPolygonF> &in) {

@@ -173,10 +173,7 @@ namespace baseFunc {
             });
 
             for (int j=0; j+1<intersections.count(); j+=2) {
-                // делаем их чуть короче
                 auto temp = QLineF(intersections[j], intersections[j + 1]);
-                temp.setP1(temp.pointAt(0.1));
-                temp.setP2(temp.pointAt(0.9));
                 resultLines.append(temp);
             }
         }
@@ -304,18 +301,6 @@ namespace baseFunc {
 
         return rotated;
     }
-
-    /*static void intersectionListFormimgRoutine2(const QLineF& l1, const QLineF& l2, QList<QPointF>& intersections_list, QLineF::IntersectionType foundingType)
-    {
-        // на случай QLineF::UnboundedIntersection ограничиваем возможные пересечения за пределами области определения линий самым большим размером = max(SurvPolyBoundRect)
-        QPointF resIntersection{0,0};
-        QLineF::IntersectionType flag = l1.intersects(l2, &resIntersection);
-
-
-        if (flag == foundingType)
-            if (!intersections_list.contains(resIntersection))
-                intersections_list.append(resIntersection);
-    }*/
 
     static bool intersectionListFormimgRoutine(const QLineF& l1, const QLineF& l2, QList<QPointF>& intersections_list, int foundingType,
                                         uint64_t maxBoundSurvPolyRad = 1e3)

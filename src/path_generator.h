@@ -55,24 +55,8 @@ private:
         HolesPathSeg = 1,
     };
 
-    struct pathCoverProgress{
-        int totalTransects;
-        int numRows; // число галсов если бы не было holes
-        int currTransect;
-        int currHoleNum; // для зон Holes U и D справедливо для holeToBCD
-        QPolygonF* currHole; // для зон Holes U и D справедливо для holeToBCD
-        QPolygonF* activeCell; // в этой переменной адрес активной в обработке cell след var со всеми cell
-        QHash<const QPolygonF*,QPair<int,double>> zoneLoadRate;   // QPolygonF* ссылка на cell из decomposer и так же упорядочены с границами holes в struct holesInfoIn
-        // [double, int] - [доля обработанных трансект, число трансект в этой cell]
-    } _pcp;
-
-    struct pathSegmentsAdj{
-
-    };
-
     QList<QLineF>           _pathSegmRelationToCell(const QPolygonF& inPoly);
     QList<QLineF>           _initNonRespectInnerHoles(const QPolygonF* inPoly);
-    QList<QList<QPointF>>   _initLinesRespectHoles(QList<QList<QPair<QPointF,int>>>& pathRespectHolesWithNum);
     QVariantList             _oneLoopTraj(const QList<QList<QPointF>>& in) const;
     QList<QList<QPointF>>   _orientNonRespectPath(const QList<QLineF>& inPath);
     void                    _orientLineOneDirection(const QList<QLineF>& lineList, QList<QLineF>& resultLines);
@@ -80,30 +64,27 @@ private:
     void                    _orientLineOneDirection(const QList<Type>& lineList, QList<Type>& resultLines);
     template<typename Type>
     void                    _adjustToLawnower_oneVectorCase(const Type &lineList, Type &resultLines, bool &reverseVertices);
-    QList<QList<QPointF>>   _pathProcRespectInnerHoles();
+    QList<QList<QPointF>>   _pathRouteBetweenCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath);
+    QHash< const QPolygonF*,
+    QList<QList<QPointF>> > _configurePathIntoCell(QHash< const QPolygonF*, int >& order, QHash< const QPolygonF*, QPair<QPointF, QPointF> >& flP);
+
+    // Debug utilz
     void _debugPrintHolesInfo(const holesInfoIn& info);
     void _qDebugPrintPathRespectHoles(const QList<QList<QPair<QPointF, int>>>& pathData);
     void _qDebugPrintPath(const QList<QList<QPointF>>& pathData);
-    QList<QList<QPointF>> _drawComplexCoverPathSequence();
-    QMap<int,QList<QList<QPair<QPointF,int>>>> _preProcRespectInnerHoles();
-    int goTroughtHoleDirectProc(QVector<int>& holesNumStack, QList<QList<QPointF>>& res);
-    bool _updateCountRule();
-    QList<QList<QPointF>> _pathRouteBetweenCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath);
-
     QPair<QPointF,QPointF> _startEndP;
 
     bool            _isHolesActive = false;
     QList<QLineF>   _path;
     double          _gridSpace;
     double          _gridAngle;
-    QList<QList<QPair<QPointF,int>>>   _pathRespectHolesWithNum; // сопроводительная переменная у каждой точки есть номер QPointF,int зоны с которой пересечение либо -1 если пересеч с внеш границей
+
     QList<QList<QPointF>>   _pathRespectHoles; // для выдачи в qml используем такое представление
-    QList<QLineF>   _linesMannerRespectHoles; // но в обработке при preprocessing лучше держать их так
     QList<QList<QPointF>>   _orientedPathSimpl; // non-Inner Incl path oriented _path var above
     QVector<int>            _holesNumStack;
-    QMap<int,
-    QList<QList< QPair<QPointF,int> >>    >    _holeMannerPathSegm;
     QHash< const QPolygonF*, QList<QList<QPointF>> >   _pathIntoCell;
+    QHash< const QPolygonF*, QPair<QPointF, QPointF> > _startEndPointsIntoCell;
+    QHash< const QPolygonF*, int >                     _ordering;
 
     // указатели на переменные в decompose
     const QList<QPolygonF>*     _holes = nullptr;
@@ -112,8 +93,6 @@ private:
     // два указателя на переменные хранящие информацию по ячейкам cells
     const holesInfoIn*          _decompose = nullptr;
     const QList<QPolygonF>*     _bpd_decompositionCells = nullptr;
-    bool                        _currRule;
-    double                      _ruleRate;
 
     PathFinderCalculator *pfc;
 };
