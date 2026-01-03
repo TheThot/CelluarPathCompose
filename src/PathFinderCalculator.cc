@@ -103,8 +103,8 @@ void PathFinderCalculator::buildPath2d() {
 //    _pathArea = QRectF(0, 0, _wrldX, _wrldY);
 
     initGenerator();
-    initCollisions();
-//    initCollisions(_pathArea);
+//    initCollisions();
+    initCollisions(_pathArea);
 
     int fromWorldX, fromWorldY, toWorldX, toWorldY;
     /*getWorldCoordinate(_pointFrom2d.x(), _pointFrom2d.y(), fromWorldX, fromWorldY);
@@ -161,8 +161,8 @@ void PathFinderCalculator::initCollisions(const QRectF& area) {
     for(const auto & obst: _obstacles2d){
         for(int i = 0; i < obst.count(); ++i){
             QLineF buff = QLineF(obst[i], obst[(i+1)%obst.count()]);
-            for(double j = 0; j <= 1; j+=step){
-                auto res = buff.pointAt(j);
+            auto bl = bresenham_line(QPoint(buff.p1().x(), buff.p1().y()), QPoint(buff.p2().x(), buff.p2().y()));
+            for(const auto& res: bl){
                 if(area.contains(res)){
                     getWorldCoordinate(res.x(), res.y(), xWrld, yWrld, area);
                     QPoint resI = QPoint(xWrld, yWrld);

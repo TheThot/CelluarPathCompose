@@ -175,8 +175,8 @@ namespace baseFunc {
             for (int j=0; j+1<intersections.count(); j+=2) {
                 // делаем их чуть короче
                 auto temp = QLineF(intersections[j], intersections[j + 1]);
-                temp.setP1(temp.pointAt(0.1));
-                temp.setP2(temp.pointAt(0.9));
+                /*temp.setP1(temp.pointAt(0.1));
+                temp.setP2(temp.pointAt(0.9));*/
                 resultLines.append(temp);
             }
         }
