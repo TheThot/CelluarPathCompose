@@ -25,8 +25,10 @@ PathGenerator::PathGenerator(double inStep, double inAngle, QObject *parent) :
 QList<QLineF> PathGenerator::_initNonRespectInnerHoles(const QPolygonF* inPoly)
 {
     QList<QLineF> res = {};
-    if(inPoly == nullptr)
+    if(inPoly == nullptr) {
+        std::cout << "[_initNonRespectInnerHoles] warning\n";
         return res;
+    }
 
     // формируем полное покрытие полигона
     QPointF center;
@@ -121,14 +123,15 @@ void PathGenerator::pathUpdation()
     _orientedPathSimpl = _orientNonRespectPath(_path);
 
     if(_holes != nullptr) {
+        std::cout << "[PathGenerator] _bpd_decompositionCells count is " << _bpd_decompositionCells->count() << std::endl;
         //pfc->init(*_holes);
         pfc->init(*_holes, 600, 600);
         for (int i = 0; i < _bpd_decompositionCells->count(); ++i) {
             auto res = _pathSegmRelationToCell(_bpd_decompositionCells->at(i));
             QList<QList<QPointF>> resPointList = _orientNonRespectPath(res);
-            if (resPointList.isEmpty())
-                std::cout << "Bad section 0\n";
-            _pathIntoCell[&_bpd_decompositionCells->at(i)] = resPointList;
+            if (!resPointList.isEmpty())
+                _pathIntoCell[&_bpd_decompositionCells->at(i)] = resPointList;
+
             /*if(resPointList.count() != 0)
                 _pathRespectHoles += resPointList;*/
         }
@@ -190,7 +193,7 @@ QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const Q
             auto connectionPath = pfc->getPath2d();
 
             if (!connectionPath.isEmpty()) {
-                // connectionPath = adaptiveSample(connectionPath);
+                connectionPath = adaptiveSample(connectionPath);
                 result.append(connectionPath);
             }
         }
@@ -208,9 +211,6 @@ QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const Q
             prevConnectionPoint = lastSegment.last();
         }
 
-        counter++;
-        if (counter == inPath.count() - 5)
-            break;
     }
 
     return result;
