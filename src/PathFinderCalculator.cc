@@ -58,21 +58,21 @@ AStar::Vec2i PathFinderCalculator::specifyVolume(const QRectF& intoArea)
 {
     //так как в алгоритме Astar числа веществ проводим масштабирование
     int resX, resY;
-    resX = std::trunc(std::abs(intoArea.width())) + _worldOffset;
-    resY = std::trunc(std::abs(intoArea.height())) + _worldOffset;
+    resX = std::abs(intoArea.width()) + _worldOffset;
+    resY = std::abs(intoArea.height()) + _worldOffset;
     resX *= _scale;
     resY *= _scale;
     return AStar::Vec2i{resX, resY};
 }
 
 void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, int &yWorld) {
-    xWorld = std::trunc(x  * _scale);
-    yWorld = std::trunc(y * _scale);
+    xWorld = x  * _scale;
+    yWorld = y * _scale;
 }
 
 void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, int &yWorld, const QRectF& iniArea) {
-    xWorld = std::trunc( x - iniArea.left() );
-    yWorld = std::trunc(  y - iniArea.top() );
+    xWorld = x - iniArea.left();
+    yWorld =  y - iniArea.top();
     xWorld *= _scale;
     yWorld *= _scale;
 }
@@ -89,35 +89,80 @@ QPointF PathFinderCalculator::backsideCoordConversion(int xWorld, int yWorld, co
 }
 
 void PathFinderCalculator::buildPath2d() {
-    /*if(isEqual(_pointFrom2d, _pointTo2d))
-        return;*/
 
-    double maxX, maxY, minY, minX;
-    maxX = std::max(_pointFrom2d.x(), _pointTo2d.x());
-    maxY = std::max(_pointFrom2d.y(), _pointTo2d.y());
-    minY = std::min(_pointFrom2d.y(), _pointTo2d.y());
-    minX = std::min(_pointFrom2d.x(), _pointTo2d.x());
-    _pathArea = QRectF(QPointF{minX,minY}, QPointF{maxX,maxY});
-//    _pathArea = QRectF(0, 0, _wrldX, _wrldY);
+    const int WORLD_SIZE = 200;
+    _generator.setWorldSize({WORLD_SIZE, WORLD_SIZE});
+    _generator.setHeuristic(AStar::Heuristic::octagonal);
+    _generator.setDiagonalMovement(true);
+    _generator.clearCollisions();
 
-    initGenerator();
-    initCollisions();
-    // initCollisions(_pathArea);
+    // Находим bounding box всех объектов
+    QRectF totalBounds;
+    totalBounds.setTopLeft(_pointFrom2d);
+    totalBounds.setBottomRight(_pointTo2d);
 
-    int fromWorldX, fromWorldY, toWorldX, toWorldY;
-    /*getWorldCoordinate(_pointFrom2d.x(), _pointFrom2d.y(), fromWorldX, fromWorldY);
-    getWorldCoordinate(_pointTo2d.x(), _pointTo2d.y(), toWorldX, toWorldY);*/
-    getWorldCoordinate(_pointFrom2d.x(), _pointFrom2d.y(), fromWorldX, fromWorldY, _pathArea);
-    getWorldCoordinate(_pointTo2d.x(), _pointTo2d.y(), toWorldX, toWorldY, _pathArea);
-
-    auto path = _generator.findPath({fromWorldX, fromWorldY}, {toWorldX, toWorldY});
-    // QList<QPointF> pathPoints;
-    for(const auto& p: path){
-        _path2d.append(backsideCoordConversion(p.x, p.y, _pathArea));
-        // std::cout << pathPoints.last().x() << ", " << pathPoints.last().y() << std::endl;
-        // _path2d.append(QPointF(p.x * _scaleX/* + _centerArea.x()*/, p.y * _scaleY /*+ _centerArea.y()*/));
+    for (const auto& obstacle : _obstacles2d) {
+        totalBounds = totalBounds.united(obstacle.boundingRect());
     }
-    //_path2d std::movepathPoints;
+
+    // Добавляем margin
+    totalBounds.adjust(-50, -50, 50, 50);
+
+    // Масштабируем в мир 1000x1000
+    double scaleX = WORLD_SIZE / totalBounds.width();
+    double scaleY = WORLD_SIZE / totalBounds.height();
+    double scale = std::min(scaleX, scaleY);
+
+    // Функции преобразования
+    auto toWorld = [&](const QPointF& p) -> AStar::Vec2i {
+        int x = static_cast<int>((p.x() - totalBounds.left()) * scale);
+        int y = static_cast<int>((p.y() - totalBounds.top()) * scale);
+        x = std::max(0, std::min(WORLD_SIZE-1, x));
+        y = std::max(0, std::min(WORLD_SIZE-1, y));
+        return {x, y};
+    };
+
+    auto fromWorld = [&](const AStar::Vec2i& p) -> QPointF {
+        double x = p.x / scale + totalBounds.left();
+        double y = p.y / scale + totalBounds.top();
+        return QPointF(x, y);
+    };
+
+    // Добавляем препятствия
+    for (const auto& obstacle : _obstacles2d) {
+        QRectF bounds = obstacle.boundingRect();
+
+        int minX, minY, maxX, maxY;
+        AStar::Vec2i tl = toWorld(bounds.topLeft());
+        AStar::Vec2i br = toWorld(bounds.bottomRight());
+
+        minX = std::min(tl.x, br.x);
+        maxX = std::max(tl.x, br.x);
+        minY = std::min(tl.y, br.y);
+        maxY = std::max(tl.y, br.y);
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                QPointF realPoint = fromWorld({x, y});
+                if (obstacle.containsPoint(realPoint, Qt::OddEvenFill)) {
+                    _generator.addCollision({x, y});
+                }
+            }
+        }
+    }
+
+    // Ищем путь
+    AStar::Vec2i start = toWorld(_pointFrom2d);
+    AStar::Vec2i end = toWorld(_pointTo2d);
+
+    auto path = _generator.findPath(start, end);
+
+    // Преобразуем обратно
+    _path2d.clear();
+    for (const auto& p : path) {
+        _path2d.append(fromWorld(p));
+    }
+
 }
 
 

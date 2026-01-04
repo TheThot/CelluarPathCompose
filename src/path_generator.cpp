@@ -250,8 +250,10 @@ QHash<const QPolygonF*, QList<QList<QPointF>>> PathGenerator::_configurePathInto
     for (const auto& curr: order) {
         QPair<QPointF, QPointF> temp;
         auto currPath = _pathIntoCell[curr];
-        temp.first = currPath.first().first();
-        temp.second = currPath.last().last();
+        QLineF first = QLineF(currPath.first().first(), currPath.first().last());
+        temp.first = first.pointAt(0.5);
+        QLineF second = QLineF(currPath.last().first(), currPath.last().last());
+        temp.second = second.pointAt(0.5);
         flP.push_back(temp);
     }
     return res;
