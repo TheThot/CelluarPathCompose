@@ -64,9 +64,10 @@ private:
     void                    _orientLineOneDirection(const QList<Type>& lineList, QList<Type>& resultLines);
     template<typename Type>
     void                    _adjustToLawnower_oneVectorCase(const Type &lineList, Type &resultLines, bool &reverseVertices);
-    QList<QList<QPointF>>   _pathRouteBetweenCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath);
+    QList<QList<QPointF>>   _pathRouteCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath);
     QHash< const QPolygonF*,
-    QList<QList<QPointF>> > _configurePathIntoCell(QHash< const QPolygonF*, int >& order, QHash< const QPolygonF*, QPair<QPointF, QPointF> >& flP);
+    QList<QList<QPointF>> > _configurePathIntoCell(QVector< const QPolygonF* >& order, QVector< QPair<QPointF, QPointF> >& flP);
+    QList<QList<QPointF>>   _pathRouteConnections(const QVector<QPair<QPointF, QPointF>>& inPath);
 
     // Debug utilz
     void _debugPrintHolesInfo(const holesInfoIn& info);
@@ -83,8 +84,8 @@ private:
     QList<QList<QPointF>>   _orientedPathSimpl; // non-Inner Incl path oriented _path var above
     QVector<int>            _holesNumStack;
     QHash< const QPolygonF*, QList<QList<QPointF>> >   _pathIntoCell;
-    QHash< const QPolygonF*, QPair<QPointF, QPointF> > _startEndPointsIntoCell;
-    QHash< const QPolygonF*, int >                     _ordering;
+    QVector< QPair<QPointF, QPointF> >              _startEndPointsIntoCell;
+    QVector< const QPolygonF* >                     _ordering;
 
     // указатели на переменные в decompose
     const QList<QPolygonF>*     _holes = nullptr;

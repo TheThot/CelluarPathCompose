@@ -116,6 +116,8 @@ void PathGenerator::pathUpdation()
     _path.clear();
     _pathRespectHoles.clear();
     _pathIntoCell.clear();
+    QVector<const QPolygonF*> order;
+    QVector<QPair<QPointF, QPointF>> flP;
 
     _path = _initNonRespectInnerHoles(_survPolygon);
     _orientedPathSimpl = _orientNonRespectPath(_path);
@@ -133,17 +135,44 @@ void PathGenerator::pathUpdation()
             /*if(resPointList.count() != 0)
                 _pathRespectHoles += resPointList;*/
         }
+        _configurePathIntoCell(order, flP);
         /*auto iter = _pathIntoCell.begin();
         while(iter != _pathIntoCell.end()) {
             _qDebugPrintPath(iter.value());
             ++iter;
         }*/
         //применяем astar для соединения между cell
-        _pathRespectHoles = _pathRouteBetweenCells(_pathIntoCell);
+//        _pathRespectHoles = _pathRouteCells(_pathIntoCell);
+        _pathRespectHoles = _pathRouteConnections(flP);
     }
 }
 
-QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath){
+QList<QList<QPointF>> PathGenerator::_pathRouteConnections(const QVector<QPair<QPointF, QPointF>>& inConnections){
+    QList<QList<QPointF>> result;
+
+    if (inConnections.isEmpty()) {
+        return result;
+    }
+
+    // Обрабатываем остальные элементы
+    for (int i = 0; i < inConnections.count() - 1; ++i) {
+
+        QLineF temp = QLineF(inConnections[i].second, inConnections[i+1].first);
+
+        pfc->perform(temp.p1(), temp.p2());
+        auto connectionPath = pfc->getPath2d();
+
+        if (!connectionPath.isEmpty()) {
+            connectionPath = adaptiveSample(connectionPath);
+            result.append(connectionPath);
+        }
+
+    }
+
+    return result;
+}
+
+QList<QList<QPointF>> PathGenerator::_pathRouteCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath){
 
     QList<QList<QPointF>> result;
 
@@ -152,62 +181,18 @@ QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const Q
     }
 
     auto it = inPath.constBegin();
-    const auto firstCellPaths = it.value();
 
-    // Если первый элемент пуст, возвращаем пустой результат
-    if (firstCellPaths.isEmpty()) {
-        std::cout << "Bad section 3\n";
-        return result;
-    }
-
-    // Получаем первую точку из последнего сегмента первого элемента
-    const auto& lastSegment = firstCellPaths.last();
-    if (lastSegment.size() < 2) {
-        std::cout << "Bad section 4\n";
-        return result;
-    }
-
-    QPointF prevConnectionPoint = lastSegment.last();
-
-    // Обрабатываем первый элемент
-    result.append(firstCellPaths);
-
-    int counter = 0;
     // Обрабатываем остальные элементы
-    for (++it; it != inPath.constEnd(); ++it) {
+    for (; it != inPath.constEnd(); ++it) {
         const auto& currentPaths = it.value();
 
         if (currentPaths.isEmpty()) {
-            std::cout << "Bad section 1\n";
+            std::cout << "Bad section path is empty\n";
             continue;
-        }
-
-        // Добавляем соединение между предыдущим и текущим элементом
-        const auto& firstSegment = currentPaths.first();
-        if (firstSegment.size() >= 2) {
-            QPointF currentConnectionPoint = firstSegment.first();
-
-            pfc->perform(prevConnectionPoint, currentConnectionPoint);
-            auto connectionPath = pfc->getPath2d();
-
-            if (!connectionPath.isEmpty()) {
-                connectionPath = adaptiveSample(connectionPath);
-                result.append(connectionPath);
-            }
-        }
-        else
-        {
-            std::cout <<  "Bad section" << std::endl;
         }
 
         // Добавляем пути текущего элемента
         result.append(currentPaths);
-
-        // Обновляем точку соединения для следующей итерации
-        const auto& lastSegment = currentPaths.last();
-        if (lastSegment.size() >= 2) {
-            prevConnectionPoint = lastSegment.last();
-        }
 
     }
 
@@ -216,8 +201,10 @@ QList<QList<QPointF>> PathGenerator::_pathRouteBetweenCells(const QHash< const Q
 }
 
 QHash<const QPolygonF*, QList<QList<QPointF>>> PathGenerator::_configurePathIntoCell(
-    QHash<const QPolygonF*, int>& order, QHash<const QPolygonF*, QPair<QPointF, QPointF>>& flP)
+        QVector<const QPolygonF*>& order, QVector< QPair<QPointF, QPointF> >& flP)
 {
+    order.clear();
+    flP.clear();
     QHash<const QPolygonF*, QList<QList<QPointF>>> res;
     if (_pathIntoCell.count() == 0)
     {
@@ -226,7 +213,7 @@ QHash<const QPolygonF*, QList<QList<QPointF>>> PathGenerator::_configurePathInto
     }
     // формируем массив с расстояниями от начала одной до конца другой из qhash
     QVector<const QPolygonF*> allIn;
-    for (auto itOne = _pathIntoCell.constBegin(); itOne != _pathIntoCell.constBegin(); ++itOne)
+    for (auto itOne = _pathIntoCell.constBegin(); itOne != _pathIntoCell.constEnd(); ++itOne)
     {
         allIn.push_back(itOne.key());
     }
@@ -236,9 +223,9 @@ QHash<const QPolygonF*, QList<QList<QPointF>>> PathGenerator::_configurePathInto
     auto prevPath = _pathIntoCell[currCell];
     double distance, distanceMin;
     int counter = 0;
-    order[currCell] = counter;
+    order.push_back(currCell);
     const QPolygonF* currP;
-    while (allIn.empty() == false)
+    while (!allIn.empty())
     {
         ++counter;
         distanceMin = 1e9;
@@ -250,12 +237,22 @@ QHash<const QPolygonF*, QList<QList<QPointF>>> PathGenerator::_configurePathInto
             {
                 distanceMin = distance;
                 currP = *stackIter;
-                order[currP] = counter;
             }
             ++stackIter;
         }
+        order.push_back(currP);
         allIn.removeOne(currP);
         stackIter = allIn.constBegin();
+    }
+    /*for (const auto& curr: order) {
+        std::cout << "Curr order value is " << curr << std::endl;
+    }*/
+    for (const auto& curr: order) {
+        QPair<QPointF, QPointF> temp;
+        auto currPath = _pathIntoCell[curr];
+        temp.first = currPath.first().first();
+        temp.second = currPath.last().last();
+        flP.push_back(temp);
     }
     return res;
 }
