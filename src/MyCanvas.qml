@@ -33,7 +33,15 @@ Canvas {
 
         if (decomposer.showPathCoverage) {
             drawTransects(ctx)
-            drawSFpoints(ctx)
+            if(showPolyWithHoles) {
+                drawConnectionLines(ctx)
+                var connPList = pathgenerator.connPList
+                var num = 0;
+                for (var currPair of connPList) {
+                    drawSFpoints(ctx, currPair.startP, currPair.endP, num)
+                    num += 2
+                }
+            }
         }
 
         if (decomposer.showDecomposition) {
@@ -49,38 +57,56 @@ Canvas {
         ctx.restore()
     }
 
-    function drawTransects(ctx){
-        var lines = pathgenerator.pathTraj
+    function drawConnectionLines(ctx) {
+        var lines = pathgenerator.pathConnection
 
-        drawLines(ctx, lines, "#101D6B")
+        ctx.save()
+        var step = 1;
+        for (var k = 0; k < lines.length; k++) {
+            for(var j = 0; j < lines[k].length-1; j+=step){
+                drawAline(ctx, lines[k][j], lines[k][j+1], "red")
+            }
+        }
+        ctx.restore()  // восстановить состояние контекста
     }
 
-    function drawSFpoints(ctx){
-        var pointS = pathgenerator.startP
-        var pointF = pathgenerator.endP
+    function drawTransects(ctx){
+        var pathCell = pathgenerator.pathTraj
+        if(!showPolyWithHoles)
+            drawLines(ctx, pathCell, "#101D6B")
+        else{
+            for (var currPath of pathCell) {
+                drawLines(ctx, currPath, "#101D6B")
+            }
+        }
+    }
 
+    function drawSFpoints(ctx, pointS, pointF, num){
         ctx.beginPath()
-        ctx.arc(pointS.x, pointS.y, 10, 0, Math.PI * 2)
-        ctx.fillStyle = "rgba(0, 0, 0, 0)"
+        ctx.arc(pointS.x, pointS.y, 5, 0, Math.PI * 2)
+        ctx.fillStyle = "rgba(0, 0, 0, 222)"
         ctx.fill()
         ctx.strokeStyle = "red"
         ctx.lineWidth = 2
         ctx.stroke()
 
         ctx.beginPath()
-        ctx.arc(pointF.x, pointF.y, 10, 0, Math.PI * 2)
-        ctx.fillStyle = "rgba(0, 0, 0, 0)"
+        ctx.arc(pointF.x, pointF.y, 5, 0, Math.PI * 2)
+        ctx.fillStyle = "rgba(0, 0, 0, 222)"
         ctx.fill()
         ctx.strokeStyle = "red"
         ctx.lineWidth = 2
         ctx.stroke()
 
-        ctx.fillStyle = "red"
-        ctx.font = "16px Arial"
+        ctx.fillStyle = "white"
+        ctx.font = "12px Arial"
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
-        ctx.fillText("S", pointS.x, pointS.y)
-        ctx.fillText("F", pointF.x, pointF.y)
+        var textS =  num.toFixed(0)
+        ctx.fillText(textS, pointS.x, pointS.y)
+        ++num
+        textS =  num.toFixed(0)
+        ctx.fillText(textS, pointF.x, pointF.y)
     }
 
     function drawOriginalPolygon(ctx) {
@@ -181,9 +207,9 @@ Canvas {
             for(var j = 0; j < lines[k].length-1; j+=step){
                 drawAline(ctx, lines[k][j], lines[k][j+1], color)
             }
-            /*if(k > 0 && k < lines.length){ // переходы змейки
+            if(k > 0 && k < lines.length){ // переходы змейки
                 drawAline(ctx, lines[k-1][lines[k-1].length-1], lines[k][0], color)
-            }*/
+            }
         }
         ctx.restore()  // восстановить состояние контекста
     }

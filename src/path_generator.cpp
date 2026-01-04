@@ -100,7 +100,11 @@ QVariantList PathGenerator::pathTraj() const
         pathTraj = _oneLoopTraj(_orientedPathSimpl);
     }
     else {
-        pathTraj = _oneLoopTraj(_pathRespectHoles);
+        auto iter = _pathIntoCell.begin();
+        for(;iter != _pathIntoCell.end(); ++iter) {
+            QVariantList temp = _oneLoopTraj(iter.value());
+            pathTraj.append(QVariant::fromValue(temp));
+        }
     }
 
     return pathTraj;
@@ -117,7 +121,8 @@ void PathGenerator::pathUpdation()
     _pathRespectHoles.clear();
     _pathIntoCell.clear();
     QVector<const QPolygonF*> order;
-    QVector<QPair<QPointF, QPointF>> flP;
+    _startEndPointsIntoCell.clear();
+    _pathConnectionLines.clear();
 
     _path = _initNonRespectInnerHoles(_survPolygon);
     _orientedPathSimpl = _orientNonRespectPath(_path);
@@ -135,7 +140,7 @@ void PathGenerator::pathUpdation()
             /*if(resPointList.count() != 0)
                 _pathRespectHoles += resPointList;*/
         }
-        _configurePathIntoCell(order, flP);
+        _configurePathIntoCell(order, _startEndPointsIntoCell);
         /*auto iter = _pathIntoCell.begin();
         while(iter != _pathIntoCell.end()) {
             _qDebugPrintPath(iter.value());
@@ -143,7 +148,8 @@ void PathGenerator::pathUpdation()
         }*/
         //применяем astar для соединения между cell
 //        _pathRespectHoles = _pathRouteCells(_pathIntoCell);
-        _pathRespectHoles = _pathRouteConnections(flP);
+        _pathConnectionLines = _pathRouteConnections(_startEndPointsIntoCell);
+        std::cout << "Connection count is " << _pathRespectHoles.size() << std::endl;
     }
 }
 
@@ -163,7 +169,7 @@ QList<QList<QPointF>> PathGenerator::_pathRouteConnections(const QVector<QPair<Q
         auto connectionPath = pfc->getPath2d();
 
         if (!connectionPath.isEmpty()) {
-            connectionPath = adaptiveSample(connectionPath);
+            connectionPath = adaptiveSample(connectionPath, 40, 4);
             result.append(connectionPath);
         }
 
@@ -387,12 +393,15 @@ void PathGenerator::_qDebugPrintPathRespectHoles(const QList<QList<QPair<QPointF
     qDebug() << "=== End debug ===";
 }
 
-QPointF PathGenerator::startP() const{
-    return _startEndP.first;
-}
-
-QPointF PathGenerator::endP() const{
-    return _startEndP.second;
+QVariantList PathGenerator::connPList() const{
+    QVariantList list;
+    for(const auto& currL : _startEndPointsIntoCell){
+        QVariantMap pointMap;
+        pointMap["startP"]  = currL.first;
+        pointMap["endP"]    = currL.second;
+        list.append(pointMap);
+    }
+    return list;
 }
 
 void PathGenerator::_orientLineOneDirection(const QList<QLineF>& lineList, QList<QLineF>& resultLines) {
@@ -540,5 +549,23 @@ void PathGenerator::_debugPrintHolesInfo(const holesInfoIn& info) {
         qDebug() << "    BCD1:" << it.value().first;
         qDebug() << "    BCD2:" << it.value().second;
     }
+}
+
+QVariantList PathGenerator::pathConnection() const {
+    QVariantList list;
+
+    QVariantList row;
+    for (const auto &lineS: _pathConnectionLines) {
+        for (const auto &p: lineS) {
+            QVariantMap pointMap;
+            pointMap["x"] = p.x();
+            pointMap["y"] = p.y();
+            row.append(pointMap);
+        }
+        list.append(QVariant::fromValue(row));
+        row.clear();
+    }
+
+    return list;
 }
 

@@ -15,8 +15,8 @@ class PathGenerator : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QVariantList pathTraj READ pathTraj NOTIFY pathTrajChanged)
-    Q_PROPERTY(QPointF startP READ startP NOTIFY startEndChanged)
-    Q_PROPERTY(QPointF endP READ endP NOTIFY startEndChanged)
+    Q_PROPERTY(QVariantList pathConnection READ pathConnection NOTIFY pathTrajChanged)
+    Q_PROPERTY(QVariantList connPList READ connPList NOTIFY connPListChanged)
 
 public:
 
@@ -26,8 +26,8 @@ public:
     ~PathGenerator();
 
     QVariantList pathTraj() const;
-    QPointF startP() const;
-    QPointF endP() const;
+    QVariantList pathConnection() const;
+    QVariantList connPList() const;
 
     void setGridAngle(double in);
     void setTransectWidth(double in);
@@ -46,7 +46,7 @@ signals:
 
     void pathTrajChanged();
     void updatePath();
-    void startEndChanged();
+    void connPListChanged();
 
 private:
 
@@ -73,13 +73,13 @@ private:
     void _debugPrintHolesInfo(const holesInfoIn& info);
     void _qDebugPrintPathRespectHoles(const QList<QList<QPair<QPointF, int>>>& pathData);
     void _qDebugPrintPath(const QList<QList<QPointF>>& pathData);
-    QPair<QPointF,QPointF> _startEndP;
 
     bool            _isHolesActive = false;
     QList<QLineF>   _path;
     double          _gridSpace;
     double          _gridAngle;
 
+    QList<QList<QPointF>>   _pathConnectionLines;
     QList<QList<QPointF>>   _pathRespectHoles; // для выдачи в qml используем такое представление
     QList<QList<QPointF>>   _orientedPathSimpl; // non-Inner Incl path oriented _path var above
     QVector<int>            _holesNumStack;
