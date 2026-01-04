@@ -21,6 +21,128 @@ struct holesInfoIn{
 
 namespace baseFunc {
 
+    static bool segmentsIntersect(const QPointF &p1, const QPointF &p2,
+                                         const QPointF &q1, const QPointF &q2,
+                                         QPointF &intersection, double &t, double &u)
+    {
+        QPointF r = p2 - p1;
+        QPointF s = q2 - q1;
+        QPointF qp = q1 - p1;
+
+        auto crossProduct = [](const QPointF &p1, const QPointF &p2, const QPointF &p3)
+        {
+            return (p2.x() - p1.x()) * (p3.y() - p1.y()) -
+                   (p2.y() - p1.y()) * (p3.x() - p1.x());
+        };
+
+        double rxs = crossProduct(QPointF(0, 0), r, s);
+        double qpxr = crossProduct(QPointF(0, 0), qp, r);
+
+        if (fabs(rxs) < 1e-10) {
+            return false; // Коллинеарны или параллельны
+        }
+
+        t = crossProduct(QPointF(0, 0), qp, s) / rxs;
+        u = crossProduct(QPointF(0, 0), qp, r) / rxs;
+
+        if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+            intersection = p1 + r * t;
+            return true;
+        }
+
+        return false;
+    }
+
+    static QList<QPolygonF> subtractPolygonPrecise(const QPolygonF &subject, const QPolygonF &clip)
+    {
+        QList<QPolygonF> result;
+
+        if (subject.isEmpty()) return result;
+        if (clip.isEmpty()) {
+            result.append(subject);
+            return result;
+        }
+
+        // Создаем путь с операцией вычитания
+        QPainterPath subjectPath;
+        subjectPath.addPolygon(subject);
+
+        QPainterPath clipPath;
+        clipPath.addPolygon(clip);
+
+        QPainterPath subtractedPath = subjectPath.subtracted(clipPath);
+
+        // ОШИБКА 1: toFillPolygon() может возвращать пустой полигон
+        // Используем toSubpathPolygons() для получения всех подпутей
+        QList<QPolygonF> allPolygons = subtractedPath.toSubpathPolygons();
+
+        // ОШИБКА 2: Проверяем, есть ли что-то в результате
+        if (allPolygons.isEmpty()) {
+            // Если нет полигонов, возможно результат пустой
+            return result;
+        }
+
+        // ОШИБКА 3: Алгоритм разделения был слишком сложным и неправильным
+        // Упрощаем: возвращаем все полигоны из toSubpathPolygons()
+        for (const QPolygonF &poly : allPolygons) {
+            if (poly.size() >= 3) {
+                // Проверяем, замкнут ли полигон
+                QPolygonF closedPoly = poly;
+                if (closedPoly.first() != closedPoly.last()) {
+                    closedPoly.append(closedPoly.first());
+                }
+
+                // Проверяем площадь
+                double area = 0;
+                for (int i = 0; i < closedPoly.size(); i++) {
+                    int j = (i + 1) % closedPoly.size();
+                    area += closedPoly[i].x() * closedPoly[j].y();
+                    area -= closedPoly[j].x() * closedPoly[i].y();
+                }
+                area = fabs(area) / 2.0;
+
+                if (area > 1e-6) { // Минимальная площадь
+                    result.append(closedPoly);
+                }
+            }
+        }
+
+        // ОШИБКА 4: Если все еще пусто, возможно нужно альтернативное решение
+        if (result.isEmpty()) {
+            // Проверяем, может быть clip полностью внутри subject
+            bool allInside = true;
+            for (const QPointF &p : clip) {
+                if (!subject.containsPoint(p, Qt::OddEvenFill)) {
+                    allInside = false;
+                    break;
+                }
+            }
+
+            if (allInside) {
+                // Clip внутри subject - создаем полигон с дырой
+                QPainterPath pathWithHole;
+                pathWithHole.addPolygon(subject);
+                pathWithHole.addPolygon(clip);
+
+                QList<QPolygonF> holePolygons = pathWithHole.toSubpathPolygons();
+                for (const QPolygonF &poly : holePolygons) {
+                    if (poly.size() >= 3) {
+                        QPolygonF closedPoly = poly;
+                        if (closedPoly.first() != closedPoly.last()) {
+                            closedPoly.append(closedPoly.first());
+                        }
+                        result.append(closedPoly);
+                    }
+                }
+            } else {
+                // Возвращаем subject как есть
+                result.append(subject);
+            }
+        }
+
+        return result;
+    }
+
     static QList<QPolygonF> simpleSubtracted(const QPolygonF &poly1, const QPolygonF &poly2)
     {
         // Создаем QPainterPath для обоих полигонов

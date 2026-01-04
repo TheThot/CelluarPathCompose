@@ -802,11 +802,29 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
                 resCells.append(buff);
             }
         }else{
+            //TODO определить что лучше polygon operation или construction
             if(check == 2){
-                auto temp = simpleSubtracted(resCells[0], resCells[2].united(resCells[3]));
+                /*auto temp = subtractPolygonPrecise(resCells[0], resCells[2]);
+                temp = subtractPolygonPrecise(temp.first(), resCells[3]);
+//                auto temp = subtractPolygonPrecise(resCells[0], resCells[2].united(resCells[3]));
                 resCells.removeAt(0);
-                for(const auto& t: temp)
+                std::cout << "Here count is " << temp.count() << std::endl;
+                for(const auto& t: temp) {
                     resCells.prepend(t);
+                }*/
+                resCells.removeAt(0);
+                buff.clear();
+                buff << copy[0][OrientedLine::PerpendiclSweepU].p1()
+                     << copy[1][OrientedLine::ParallelSweepL].p1()
+                     << copy[1][OrientedLine::ParallelSweepL].p2()
+                     << copy[0][OrientedLine::ParallelSweepL].p2();
+                resCells.prepend(buff);
+                buff.clear();
+                buff << copy[0][OrientedLine::PerpendiclSweepU].p2()
+                     << copy[1][OrientedLine::ParallelSweepR].p1()
+                     << copy[1][OrientedLine::ParallelSweepR].p2()
+                     << copy[0][OrientedLine::ParallelSweepR].p2();
+                resCells.prepend(buff);
             }
         }
     }
