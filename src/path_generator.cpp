@@ -147,7 +147,7 @@ void PathGenerator::pathUpdation()
             ++iter;
         }*/
         //применяем astar для соединения между cell
-//        _pathRespectHoles = _pathRouteCells(_pathIntoCell);
+        _pathIntoCell = _pathRouteCells(_pathIntoCell);
         _pathConnectionLines = _pathRouteConnections(_startEndPointsIntoCell);
         std::cout << "Connection count is " << _pathRespectHoles.size() << std::endl;
     }
@@ -178,9 +178,9 @@ QList<QList<QPointF>> PathGenerator::_pathRouteConnections(const QVector<QPair<Q
     return result;
 }
 
-QList<QList<QPointF>> PathGenerator::_pathRouteCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath){
+QHash< const QPolygonF*, QList<QList<QPointF>> > PathGenerator::_pathRouteCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath){
 
-    QList<QList<QPointF>> result;
+    QHash< const QPolygonF*, QList<QList<QPointF>> > result;
 
     if (inPath.isEmpty()) {
         return result;
@@ -197,8 +197,10 @@ QList<QList<QPointF>> PathGenerator::_pathRouteCells(const QHash< const QPolygon
             continue;
         }
 
+
+
         // Добавляем пути текущего элемента
-        result.append(currentPaths);
+        result[it.key()] = currentPaths;
 
     }
 

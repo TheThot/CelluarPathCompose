@@ -21,6 +21,85 @@ struct holesInfoIn{
 
 namespace baseFunc {
 
+    //проверка лежит ли точка на прямой
+    static bool isPointOnLineF(const QPointF& p, const QLineF& line){
+        double len = line.length(); //исходная длина прямой
+        QLineF lineP1(line.p1(), p), lineP2(p, line.p2());
+        double len1, len2;
+        len1 = lineP1.length();
+        len2 = lineP2.length();
+        double sum = len1 + len2;
+        bool isEq = std::abs(len - sum) < 0.1;
+        //в случае если сумма len1 + len2 == len значит точка на прямой
+        return isEq;
+    }
+
+    /**
+     * @brief добавляет промежуточные точки полигона @param polyRep между двумя точками линий @param betweenLines
+     * @param polyRep Линии полигона
+     * @param betweenLines точки между которыми будет вестись поиск и
+     * @param orderExtraPolyline добавляем в новый массив всё вместе
+     */
+    static void extraDangerPointsRoutine(const QList<QLineF>& polyRep, const QList<QLineF>& betweenLines,
+                                          QList<QPointF>& orderExtraPolyline, QList<bool>* mappedExtraAndNon = nullptr) {
+        // находим на каких линиях полигона dangerZonePoly две наших пары точек
+        int firstLidx = -1, secondLidx = -1;
+        bool isFirstTriggered = false;
+        bool isSecondTriggered = false;
+        orderExtraPolyline.clear(); //check
+        mappedExtraAndNon->clear(); //check
+        for(int i = 0; i < betweenLines.size(); ++i) {
+            orderExtraPolyline.append(betweenLines[i].p1());
+            mappedExtraAndNon->append(false);
+            for(int j = 0; j < polyRep.size(); ++j) {
+                isFirstTriggered = isPointOnLineF(betweenLines[i].p1(), polyRep[j]);
+                isSecondTriggered = isPointOnLineF(betweenLines[i].p2(), polyRep[j]);
+                //первая точка пары - на какой линии
+                if(isFirstTriggered)
+                    firstLidx = j;
+                //вторая точка пары - на какой линии
+                if(isSecondTriggered)
+                    secondLidx = j;
+            }
+            //проверить точки на одной линии?
+            //на разных линиях? проверить как дальше линии пересекаются между собой
+            if(std::abs(firstLidx - secondLidx) == 1) {
+                orderExtraPolyline.append(polyRep[firstLidx].p2());
+                mappedExtraAndNon->append(true);
+            }
+            else {
+                if(firstLidx < secondLidx)
+                    for(int k = firstLidx; k < secondLidx; k+=2){
+                        orderExtraPolyline.append(polyRep[k].p2());
+                        mappedExtraAndNon->append(true);
+                        orderExtraPolyline.append(polyRep[k + 1].p2());
+                        mappedExtraAndNon->append(true);
+                    }
+                else if(firstLidx > secondLidx){ //особый случай с конца, что одна линия с пересечение secondLidx на конце а вторая firstLidx в начале
+                    for(int k = firstLidx; k < polyRep.count(); k+=2){
+                        orderExtraPolyline.append(polyRep[k].p2());
+                        mappedExtraAndNon->append(true);
+                        if(firstLidx < polyRep.count() - 1) {
+                            orderExtraPolyline.append(polyRep[k + 1].p2());
+                            mappedExtraAndNon->append(true);
+                        }
+                    }
+                    if(secondLidx > 0)
+                        for(int k = 0; k < secondLidx; k+=2){
+                            orderExtraPolyline.append(polyRep[k].p2());
+                            mappedExtraAndNon->append(true);
+                            if(secondLidx > 1) {
+                                orderExtraPolyline.append(polyRep[k + 1].p2());
+                                mappedExtraAndNon->append(true);
+                            }
+                        }
+                }
+            }
+            firstLidx = -1;
+            secondLidx = -1;
+        }
+    }
+
     static bool segmentsIntersect(const QPointF &p1, const QPointF &p2,
                                          const QPointF &q1, const QPointF &q2,
                                          QPointF &intersection, double &t, double &u)
@@ -488,19 +567,6 @@ namespace baseFunc {
                   });
 
         return polygon;
-    }
-
-    //проверка лежит ли точка на прямой
-    static bool isPointOnLineF(const QPointF& p, const QLineF& line){
-        double len = line.length(); //исходная длина прямой
-        QLineF lineP1(line.p1(), p), lineP2(p, line.p2());
-        double len1, len2;
-        len1 = lineP1.length();
-        len2 = lineP2.length();
-        double sum = len1 + len2;
-        bool isEq = std::abs(len - sum) < 0.1;
-        //в случае если сумма len1 + len2 == len значит точка на прямой
-        return isEq;
     }
 
     /**

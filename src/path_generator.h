@@ -64,7 +64,8 @@ private:
     void                    _orientLineOneDirection(const QList<Type>& lineList, QList<Type>& resultLines);
     template<typename Type>
     void                    _adjustToLawnower_oneVectorCase(const Type &lineList, Type &resultLines, bool &reverseVertices);
-    QList<QList<QPointF>>   _pathRouteCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath);
+    QHash< const QPolygonF*,
+    QList<QList<QPointF>> >  _pathRouteCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath);
     QHash< const QPolygonF*,
     QList<QList<QPointF>> > _configurePathIntoCell(QVector< const QPolygonF* >& order, QVector< QPair<QPointF, QPointF> >& flP);
     QList<QList<QPointF>>   _pathRouteConnections(const QVector<QPair<QPointF, QPointF>>& inPath);
