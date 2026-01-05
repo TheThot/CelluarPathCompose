@@ -144,7 +144,7 @@ Rectangle {
             from: 0
             to: 180
             value: 0
-            stepSize: 9
+            stepSize: 1
         }
 
         // Управление углом

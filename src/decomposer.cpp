@@ -669,7 +669,8 @@ bool Decomposer::updateOrientedLine3(QList<QMap<OrientedLine, QLineF>>& inMap, i
             intersectionListFormimgRoutine(currParr, inMap[j][OrientedLine::PerpendiclSweepU], intersections,
                                            QLineF::BoundedIntersection, maxBoundSurvPolyRad);
         }
-    }
+    }if(intersections.count() == 0)
+        return false;
     inMap[_h1][OrientedLine::PerpendiclSweepD].setP1(intersections[0]);
 
     if(h2 > h1) {
@@ -709,6 +710,8 @@ bool Decomposer::updateOrientedLine1(QList<QMap<OrientedLine, QLineF>>& inMap, i
                                            QLineF::BoundedIntersection, maxBoundSurvPolyRad);
         }
     }
+    if(intersections.count() == 0)
+        return false;
     inMap[_h2][OrientedLine::PerpendiclSweepU].setP1(intersections[0]);
 
     if(h2 > h1) {
@@ -780,11 +783,12 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
     // modify first 2 * holes.count cells of compact func resCell
     // сделаем чтобы все зоны строго были поделены для дальнейшего path cover
     auto check = _updateCellRule(&holes, &resCells);
+    std::cout << "Rule is " << check << std::endl;
 
     int h1, h2;
     QList<double> square;
     for(int i = 0; i < holes.count(); ++i){
-        square.append(holes[i].boundingRect().width()*holes[i].boundingRect().height());
+        square.append(polygonArea(holes[i]));
     }
     auto hs = sort_indexes<double>(square);
     h1 = hs[1];
@@ -1060,10 +1064,10 @@ void Decomposer::createPolygonWithHoles() {
             << QPointF(150, 225);
     m_holes.append(oneHole);
     QPolygonF secHole;
-    *//*secHole << QPointF(300, 350)
+    secHole << QPointF(300, 350)
             << QPointF(350, 350)
             << QPointF(350, 300)
-            << QPointF(300, 300);*//*
+            << QPointF(300, 300);
     secHole << QPointF(289.64, 325.00)
             << QPointF(325.00, 360.36)
             << QPointF(360.36, 325.00)

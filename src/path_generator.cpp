@@ -178,7 +178,8 @@ QList<QList<QPointF>> PathGenerator::_pathRouteConnections(const QVector<QPair<Q
     return result;
 }
 
-QHash< const QPolygonF*, QList<QList<QPointF>> > PathGenerator::_pathRouteCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath){
+QHash< const QPolygonF*, QList<QList<QPointF>> > PathGenerator::_pathRouteCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath)
+{
 
     QHash< const QPolygonF*, QList<QList<QPointF>> > result;
 
@@ -222,11 +223,9 @@ QHash< const QPolygonF*, QList<QList<QPointF>> > PathGenerator::_pathRouteCells(
 
         // Добавляем пути текущего элемента
         result[it.key()] = configPathRes;
-
     }
 
     return result;
-
 }
 
 QHash<const QPolygonF*, QList<QList<QPointF>>> PathGenerator::_configurePathIntoCell(

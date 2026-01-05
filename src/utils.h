@@ -678,7 +678,7 @@ namespace baseFunc {
 
         std::cout << "utilz [updateCellRule] squareWhole is " << squareWhole << " sumSq is " << sumSq << " min is " << min << std::endl;
 
-        rule = (squareWhole == 0) ? 0 : (squareWhole < min) ? 1 : 2; // squareWhole == min входит в 2
+        rule = (squareWhole == 0) ? 0 : (std::abs(squareWhole - min) < 1e-1) ? 2 : 1; // squareWhole == min входит в 2
 
         return rule;
     }
