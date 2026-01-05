@@ -160,7 +160,7 @@ QList<QList<QPointF>> PathGenerator::_pathRouteConnections(const QVector<QPair<Q
         return result;
     }
 
-    // Обрабатываем остальные элементы
+    // Обрабатываем переходы между зонами соединяем элементы старт и финиш двух зон
     for (int i = 0; i < inConnections.count() - 1; ++i) {
 
         QLineF temp = QLineF(inConnections[i].second, inConnections[i+1].first);
@@ -185,11 +185,21 @@ QHash< const QPolygonF*, QList<QList<QPointF>> > PathGenerator::_pathRouteCells(
     if (inPath.isEmpty()) {
         return result;
     }
+    QHash< const QPolygonF*, QList<QLineF>> holesLines;
+
+    for(const auto& currHole: *_holes){
+        QList<QLineF> temp;
+        for(int i = 0; i < currHole.count(); ++i){
+            temp.append(QLineF(currHole[i], currHole[(i+1)%currHole.count()]));
+        }
+        holesLines[&currHole] = temp;
+    }
 
     auto it = inPath.constBegin();
 
     // Обрабатываем остальные элементы
     for (; it != inPath.constEnd(); ++it) {
+        QList<QList<QPointF>> configPathRes;
         const auto& currentPaths = it.value();
 
         if (currentPaths.isEmpty()) {
@@ -197,10 +207,21 @@ QHash< const QPolygonF*, QList<QList<QPointF>> > PathGenerator::_pathRouteCells(
             continue;
         }
 
-
+        QList<QPointF> orderExtraPolyline;
+        for(int i = 0; i < currentPaths.count()-1; ++i){
+            QList<QPointF> buff;
+            buff.append(currentPaths[i].first());
+            QLineF betweenLines = QLineF(currentPaths[i].last(), currentPaths[i+1].first());
+            for(const auto& currHole : holesLines)
+                if(extraDangerPointsRoutine(currHole, betweenLines, orderExtraPolyline)) // добавляем точки полигона если они есть в местах пересечений чтобы траектория не проходила внутри holes
+                    break;
+            buff.append(orderExtraPolyline);
+            configPathRes.append(buff);
+        }
+        configPathRes.append(QList<QPointF>{currentPaths.last().first(), currentPaths.last().last()});
 
         // Добавляем пути текущего элемента
-        result[it.key()] = currentPaths;
+        result[it.key()] = configPathRes;
 
     }
 

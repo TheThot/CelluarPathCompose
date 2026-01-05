@@ -29,7 +29,7 @@ namespace baseFunc {
         len1 = lineP1.length();
         len2 = lineP2.length();
         double sum = len1 + len2;
-        bool isEq = std::abs(len - sum) < 0.1;
+        bool isEq = std::abs(len - sum) < 1e-1;
         //в случае если сумма len1 + len2 == len значит точка на прямой
         return isEq;
     }
@@ -37,67 +37,93 @@ namespace baseFunc {
     /**
      * @brief добавляет промежуточные точки полигона @param polyRep между двумя точками линий @param betweenLines
      * @param polyRep Линии полигона
-     * @param betweenLines точки между которыми будет вестись поиск и
-     * @param orderExtraPolyline добавляем в новый массив всё вместе
+     * @param betweenLine точки между которыми будет вестись поиск
+     * result @param orderExtraPolyline добавляем в новый массив всё вместе
      */
-    static void extraDangerPointsRoutine(const QList<QLineF>& polyRep, const QList<QLineF>& betweenLines,
-                                          QList<QPointF>& orderExtraPolyline, QList<bool>* mappedExtraAndNon = nullptr) {
-        // находим на каких линиях полигона dangerZonePoly две наших пары точек
+    static bool extraDangerPointsRoutine(const QList<QLineF>& polyRep, const QLineF& betweenLine,
+                                          QList<QPointF>& orderExtraPolyline) {
+        // находим на каких линиях полигона polyRep inner hole две наших пары точек
         int firstLidx = -1, secondLidx = -1;
-        bool isFirstTriggered = false;
-        bool isSecondTriggered = false;
-        orderExtraPolyline.clear(); //check
-        mappedExtraAndNon->clear(); //check
-        for(int i = 0; i < betweenLines.size(); ++i) {
-            orderExtraPolyline.append(betweenLines[i].p1());
-            mappedExtraAndNon->append(false);
-            for(int j = 0; j < polyRep.size(); ++j) {
-                isFirstTriggered = isPointOnLineF(betweenLines[i].p1(), polyRep[j]);
-                isSecondTriggered = isPointOnLineF(betweenLines[i].p2(), polyRep[j]);
-                //первая точка пары - на какой линии
-                if(isFirstTriggered)
-                    firstLidx = j;
-                //вторая точка пары - на какой линии
-                if(isSecondTriggered)
-                    secondLidx = j;
-            }
-            //проверить точки на одной линии?
-            //на разных линиях? проверить как дальше линии пересекаются между собой
-            if(std::abs(firstLidx - secondLidx) == 1) {
-                orderExtraPolyline.append(polyRep[firstLidx].p2());
-                mappedExtraAndNon->append(true);
-            }
-            else {
-                if(firstLidx < secondLidx)
-                    for(int k = firstLidx; k < secondLidx; k+=2){
-                        orderExtraPolyline.append(polyRep[k].p2());
-                        mappedExtraAndNon->append(true);
-                        orderExtraPolyline.append(polyRep[k + 1].p2());
-                        mappedExtraAndNon->append(true);
-                    }
-                else if(firstLidx > secondLidx){ //особый случай с конца, что одна линия с пересечение secondLidx на конце а вторая firstLidx в начале
-                    for(int k = firstLidx; k < polyRep.count(); k+=2){
-                        orderExtraPolyline.append(polyRep[k].p2());
-                        mappedExtraAndNon->append(true);
-                        if(firstLidx < polyRep.count() - 1) {
-                            orderExtraPolyline.append(polyRep[k + 1].p2());
-                            mappedExtraAndNon->append(true);
-                        }
-                    }
-                    if(secondLidx > 0)
-                        for(int k = 0; k < secondLidx; k+=2){
-                            orderExtraPolyline.append(polyRep[k].p2());
-                            mappedExtraAndNon->append(true);
-                            if(secondLidx > 1) {
-                                orderExtraPolyline.append(polyRep[k + 1].p2());
-                                mappedExtraAndNon->append(true);
-                            }
-                        }
-                }
-            }
-            firstLidx = -1;
-            secondLidx = -1;
+        orderExtraPolyline.clear();
+        orderExtraPolyline.append(betweenLine.p1());
+
+        // Ищем индексы линий, содержащих точки
+        for(int j = 0; j < polyRep.size(); ++j) {
+            if(isPointOnLineF(betweenLine.p1(), polyRep[j]))
+                firstLidx = j;
+            if(isPointOnLineF(betweenLine.p2(), polyRep[j]))
+                secondLidx = j;
         }
+
+        if(firstLidx == -1 || secondLidx == -1)
+            return false;
+
+        // Если точки на одной линии, промежуточных точек нет
+        if(firstLidx == secondLidx) {
+            // Ничего не добавляем
+            return true;
+        }
+
+        // Проверяем, являются ли линии соседними с учетом замкнутости
+        int size = polyRep.size();
+        bool areAdjacent = false;
+
+        // Проверка соседности
+        if(std::abs(firstLidx - secondLidx) == 1 || (firstLidx == 0 && secondLidx == size-1) ||
+                (firstLidx == size-1 && secondLidx == 0))
+            areAdjacent = true;
+
+        if(areAdjacent) {
+            // Для соседних линий добавляем только точку соединения между ними
+            // Нужно определить правильную точку соединения
+            if((firstLidx + 1) % size == secondLidx) {
+                // firstLidx предшествует secondLidx
+                orderExtraPolyline.append(polyRep[firstLidx].p2());
+            } else {
+                // secondLidx предшествует firstLidx
+                // Добавляем точки в обратном порядке
+                orderExtraPolyline.append(polyRep[secondLidx].p2());
+            }
+            return true;
+        }
+
+        // Для линий собираем все промежуточные вершины
+        // Определяем направление обхода
+        int currentIdx = firstLidx;
+        int endIdx = secondLidx;
+
+        // Проверяем какое направление короче
+        int forwardDistance = (endIdx > currentIdx) ?
+                              (endIdx - currentIdx) :
+                              (size - currentIdx + endIdx);
+        int backwardDistance = (currentIdx > endIdx) ?
+                               (currentIdx - endIdx) :
+                               (size - endIdx + currentIdx);
+
+        // Выбираем направление с меньшим расстоянием
+        bool goForward = forwardDistance <= backwardDistance;
+
+        if(goForward) {
+            // Обход вперед
+            while(true) {
+                currentIdx = (currentIdx + 1) % size;
+                if(currentIdx == endIdx) break;
+
+                // Добавляем начальную точку текущей линии
+                orderExtraPolyline.append(polyRep[currentIdx].p1());
+            }
+        } else {
+            // Обход назад
+            while(true) {
+                // Добавляем конечную точку предыдущей линии
+                orderExtraPolyline.append(polyRep[currentIdx].p1());
+
+                currentIdx = (currentIdx - 1 + size) % size;
+                if(currentIdx == endIdx) break;
+            }
+        }
+
+        return true;
     }
 
     static bool segmentsIntersect(const QPointF &p1, const QPointF &p2,
