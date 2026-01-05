@@ -13,6 +13,7 @@
 #include <QList>
 #include <QPair>
 #include <QPainterPath>
+#include <iostream>
 
 struct holesInfoIn{
     QHash<const QPolygonF*, QPair<QList<QPointF>,QList<QPointF>>>  holeBorderSegm;
@@ -299,6 +300,324 @@ namespace baseFunc {
         return polygons;
     }
 
+    static QPolygonF simpleUnited(const QPolygonF &poly1, const QPolygonF &poly2) {
+
+        // Создаем QPainterPath для обоих полигонов
+        QPainterPath path1;
+        path1.addPolygon(poly1);
+
+        QPainterPath path2;
+        path2.addPolygon(poly2);
+
+        // Объединяем
+        QPainterPath united = path1.united(path2);
+
+        // Используем toSubpathPolygons() для получения всех контуров
+        QList<QPolygonF> polygons = united.toSubpathPolygons();
+        QList<QPolygonF> result;
+
+        // Обрабатываем каждый полигон
+        for (QPolygonF poly : polygons) {
+            // Удаляем дубликаты точек
+            QPolygonF cleanPoly;
+            for (int i = 0; i < poly.size(); i++) {
+                if (i == 0 || QLineF(poly[i-1], poly[i]).length() > 0.001) {
+                    cleanPoly.append(poly[i]);
+                }
+            }
+
+            if (cleanPoly.size() >= 3) {
+                // Замыкаем полигон если нужно
+                if (cleanPoly.first() != cleanPoly.last()) {
+                    cleanPoly.append(cleanPoly.first());
+                }
+
+                // Вычисляем площадь для проверки корректности
+                double area = 0;
+                int n = cleanPoly.size();
+                for (int i = 0; i < n; i++) {
+                    int j = (i + 1) % n;
+                    area += cleanPoly[i].x() * cleanPoly[j].y();
+                    area -= cleanPoly[j].x() * cleanPoly[i].y();
+                }
+                area = fabs(area) / 2.0;
+
+                // Добавляем если площадь достаточна
+                if (area > 0.000001) {
+                    result.append(cleanPoly);
+                }
+            }
+        }
+
+        // Если результат пустой, но хотя бы один полигон был не пустой
+        if (result.isEmpty() ) {
+            // Возвращаем наибольший из полигонов
+            return QPolygonF();
+        }
+        return result[0];
+    }
+
+// Вспомогательная функция для вычисления площади
+    static double polygonArea(const QPolygonF &poly) {
+        if (poly.size() < 3) return 0.0;
+
+        double area = 0.0;
+        int n = poly.size();
+
+        for (int i = 0; i < n; i++) {
+            int j = (i + 1) % n;
+            area += poly[i].x() * poly[j].y();
+            area -= poly[j].x() * poly[i].y();
+        }
+
+        return fabs(area) / 2.0;
+    }
+
+
+// Упрощение полигона (удаление дубликатов и коллинеарных точек)
+    static QPolygonF simplifyPolygon(const QPolygonF &poly, double epsilon) {
+        if (poly.size() < 3) return poly;
+
+        QPolygonF result;
+        result.append(poly[0]);
+
+        for (int i = 1; i < poly.size(); i++) {
+            QPointF prev = result.last();
+            QPointF curr = poly[i];
+
+            // Проверяем расстояние
+            double dx = curr.x() - prev.x();
+            double dy = curr.y() - prev.y();
+            double dist = std::sqrt(dx * dx + dy * dy);
+
+            if (dist > epsilon) {
+                // Проверяем, не коллинеарна ли точка
+                if (result.size() >= 2) {
+                    QPointF prev2 = result[result.size() - 2];
+                    double area = std::abs(
+                            (prev2.x() - prev.x()) * (curr.y() - prev.y()) -
+                            (prev2.y() - prev.y()) * (curr.x() - prev.x())
+                    );
+
+                    if (area > epsilon * epsilon) {
+                        result.append(curr);
+                    } else {
+                        // Заменяем предыдущую точку
+                        result.last() = curr;
+                    }
+                } else {
+                    result.append(curr);
+                }
+            }
+        }
+
+        // Замыкаем если нужно
+        if (result.size() > 2) {
+            QPointF first = result.first();
+            QPointF last = result.last();
+
+            double dx = last.x() - first.x();
+            double dy = last.y() - first.y();
+            double dist = std::sqrt(dx * dx + dy * dy);
+
+            if (dist > epsilon) {
+                result.append(first);
+            }
+        }
+
+        return result;
+    }
+
+// "Раздутие" полигона (смещение границ наружу)
+    static QPolygonF inflatePolygon(const QPolygonF &poly, double amount) {
+        if (poly.size() < 3) return poly;
+
+        QPolygonF result;
+        int n = poly.size();
+
+        for (int i = 0; i < n; i++) {
+            QPointF prev = poly[(i - 1 + n) % n];
+            QPointF curr = poly[i];
+            QPointF next = poly[(i + 1) % n];
+
+            // Вычисляем нормали к ребрам
+            QPointF inEdge = curr - prev;
+            QPointF outEdge = next - curr;
+
+            // Нормализуем
+            double lenIn = std::sqrt(inEdge.x() * inEdge.x() + inEdge.y() * inEdge.y());
+            double lenOut = std::sqrt(outEdge.x() * outEdge.x() + outEdge.y() * outEdge.y());
+
+            if (lenIn > 0) inEdge /= lenIn;
+            if (lenOut > 0) outEdge /= lenOut;
+
+            // Поворачиваем на 90 градусов
+            QPointF normalIn(-inEdge.y(), inEdge.x());
+            QPointF normalOut(-outEdge.y(), outEdge.x());
+
+            // Усредняем нормали
+            QPointF normal((normalIn.x() + normalOut.x()) * 0.5,
+                           (normalIn.y() + normalOut.y()) * 0.5);
+
+            double len = std::sqrt(normal.x() * normal.x() + normal.y() * normal.y());
+            if (len > 0) normal /= len;
+
+            // Смещаем точку
+            result.append(curr + normal * amount);
+        }
+
+        return result;
+    }
+
+// Извлечение полигона из пути с обратным масштабированием
+    static QPolygonF extractPrecisePolygon(const QPainterPath &path) {
+        const double precisionScale = 100000.0;
+        const double epsilon = 1e-8;
+
+        // Пробуем несколько методов извлечения
+        QPolygonF result;
+
+        // Метод 1: Проход по элементам
+        QPolygonF fromElements;
+        for (int i = 0; i < path.elementCount(); i++) {
+            const QPainterPath::Element &elem = path.elementAt(i);
+            fromElements.append(QPointF(elem.x / precisionScale, elem.y / precisionScale));
+        }
+
+        // Метод 2: Используем toFillPolygon
+        QPolygonF fromFill = path.toFillPolygon();
+        for (QPointF &p : fromFill) {
+            p = QPointF(p.x() / precisionScale, p.y() / precisionScale);
+        }
+
+        // Выбираем лучший результат (с большей площадью)
+        double area1 = polygonArea(fromElements);
+        double area2 = polygonArea(fromFill);
+
+        result = (area1 > area2) ? fromElements : fromFill;
+
+        // Упрощаем результат
+        result = simplifyPolygon(result, epsilon);
+
+        return result;
+    }
+
+// Преобразование полигона в путь с повышенной точностью
+    static QPainterPath polygonToHighPrecisionPath(const QPolygonF &poly) {
+        QPainterPath path;
+        if (poly.isEmpty()) return path;
+
+        const double precisionScale = 100000.0; // Высокий масштаб для точности
+
+        path.moveTo(poly[0].x() * precisionScale, poly[0].y() * precisionScale);
+        for (int i = 1; i < poly.size(); i++) {
+            path.lineTo(poly[i].x() * precisionScale, poly[i].y() * precisionScale);
+        }
+        path.closeSubpath();
+
+        return path;
+    }
+
+// Проверка особых случаев (касания, вложенности)
+    static QPolygonF checkSpecialCases(const QPolygonF &poly1, const QPolygonF &poly2) {
+        const double epsilon = 1e-6;
+
+        // Проверяем, находится ли один полигон внутри другого
+        auto pointInPolygon = [](const QPointF &p, const QPolygonF &poly) -> bool {
+            int windingNumber = 0;
+            int n = poly.size();
+
+            for (int i = 0; i < n; i++) {
+                const QPointF &p1 = poly[i];
+                const QPointF &p2 = poly[(i + 1) % n];
+
+                if (p1.y() <= p.y()) {
+                    if (p2.y() > p.y()) {
+                        if ((p2.x() - p1.x()) * (p.y() - p1.y()) -
+                            (p.x() - p1.x()) * (p2.y() - p1.y()) > 0) {
+                            windingNumber++;
+                        }
+                    }
+                } else {
+                    if (p2.y() <= p.y()) {
+                        if ((p2.x() - p1.x()) * (p.y() - p1.y()) -
+                            (p.x() - p1.x()) * (p2.y() - p1.y()) < 0) {
+                            windingNumber--;
+                        }
+                    }
+                }
+            }
+
+            return windingNumber != 0;
+        };
+
+        // Проверяем центр полигона 1 в полигоне 2
+        QPointF center1 = poly1.boundingRect().center();
+        QPointF center2 = poly2.boundingRect().center();
+
+        if (pointInPolygon(center1, poly2)) {
+            // poly1 полностью внутри poly2
+            return poly1;
+        }
+
+        if (pointInPolygon(center2, poly1)) {
+            // poly2 полностью внутри poly1
+            return poly2;
+        }
+
+        // Проверяем касание границ
+        // Для этого создаем слегка "раздутые" полигоны
+        const double inflateAmount = 0.001;
+
+        QPolygonF inflated1 = inflatePolygon(poly1, inflateAmount);
+        QPolygonF inflated2 = inflatePolygon(poly2, inflateAmount);
+
+        QPainterPath path1, path2;
+        path1.addPolygon(inflated1);
+        path2.addPolygon(inflated2);
+
+        QPainterPath intersected = path1.intersected(path2);
+
+        if (!intersected.isEmpty()) {
+            QPolygonF result = intersected.toFillPolygon();
+            return simplifyPolygon(result, epsilon);
+        }
+
+        return QPolygonF();
+    }
+
+    static QPolygonF preciseIntersected(const QPolygonF &poly1, const QPolygonF &poly2) {
+        // Быстрые проверки
+        if (poly1.size() < 3 || poly2.size() < 3) return QPolygonF();
+
+        // Проверка bounding boxes
+        QRectF bbox1 = poly1.boundingRect();
+        QRectF bbox2 = poly2.boundingRect();
+        if (!bbox1.intersects(bbox2)) return QPolygonF();
+
+        // Создаем пути с повышенной точностью
+        QPainterPath path1 = polygonToHighPrecisionPath(poly1);
+        QPainterPath path2 = polygonToHighPrecisionPath(poly2);
+
+        // Вычисляем пересечение
+        QPainterPath intersected = path1.intersected(path2);
+
+        if (intersected.isEmpty()) {
+            // Проверяем особые случаи
+            return checkSpecialCases(poly1, poly2);
+        }
+
+        // Получаем полигон с обработкой ошибок
+        QPolygonF result = extractPrecisePolygon(intersected);
+
+        // Проверяем результат
+        if (result.size() < 3) {
+            return QPolygonF();
+        }
+
+        return result;
+    }
+
     static double lineEquationKoeff(const QPointF& p1, const QPointF& p2){
         double res;
         res = (p2.x() - p1.x()) / (p2.y() + p1.y());
@@ -335,29 +654,29 @@ namespace baseFunc {
         for(int i = 0; i < _holes->count() * 2; ++i){
             check.append(_bpd_decompositionCells->at(i));
         }
-        QList<QPolygonF> check2;
+        QList<QRectF> check2;
         for(int i = 0; i < _holes->count() * 2; i+=2){
-            check2.append(check[i].united(check[i+1]));
+            check2.append(check[i].boundingRect().united(check[i+1].boundingRect()));
         }
         QList<double> squareHolesSection;
         for(int i = 0; i < check2.count(); ++i) {
-            squareHolesSection.append(check2[i].boundingRect().height()*check2[i].boundingRect().width());
+            squareHolesSection.append(polygonArea(check2[i]));
         }
         double sumSq = 0;
         double min = 1e10;
         for(int i = 0; i < check2.count(); ++i) {
-            if(min > squareHolesSection[i])
-                min = squareHolesSection[i];
+            if(min > polygonArea(check2[i]))
+                min = polygonArea(check2[i]);
             sumSq += squareHolesSection[i];
         }
         QPolygonF whole;
         for(int i = 0; i < check2.count()-1; ++i) {
             if(i == 0)
-                whole = check2[i].intersected(check2[i+1]);
-            else
-                whole = whole.intersected(check2[i+1]);
+                whole = preciseIntersected(check2[i], check2[i+1]);
         }
-        double squareWhole = whole.boundingRect().width()*whole.boundingRect().height();
+        double squareWhole = polygonArea(whole);
+
+        std::cout << "utilz [updateCellRule] squareWhole is " << squareWhole << " sumSq is " << sumSq << " min is " << min << std::endl;
 
         rule = (squareWhole == 0) ? 0 : (squareWhole < min) ? 1 : 2; // squareWhole == min входит в 2
 

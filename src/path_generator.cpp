@@ -128,7 +128,7 @@ void PathGenerator::pathUpdation()
     _orientedPathSimpl = _orientNonRespectPath(_path);
 
     if(_holes != nullptr) {
-        std::cout << "[PathGenerator] _bpd_decompositionCells count is " << _bpd_decompositionCells->count() << std::endl;
+//        std::cout << "[PathGenerator] _bpd_decompositionCells count is " << _bpd_decompositionCells->count() << std::endl;
         //pfc->init(*_holes);
         pfc->init(*_holes);
         for (int i = 0; i < _bpd_decompositionCells->count(); ++i) {
@@ -149,7 +149,7 @@ void PathGenerator::pathUpdation()
         //применяем astar для соединения между cell
         _pathIntoCell = _pathRouteCells(_pathIntoCell);
         _pathConnectionLines = _pathRouteConnections(_startEndPointsIntoCell);
-        std::cout << "Connection count is " << _pathRespectHoles.size() << std::endl;
+//        std::cout << "Connection count is " << _pathRespectHoles.size() << std::endl;
     }
 }
 
@@ -169,7 +169,7 @@ QList<QList<QPointF>> PathGenerator::_pathRouteConnections(const QVector<QPair<Q
         auto connectionPath = pfc->getPath2d();
 
         if (!connectionPath.isEmpty()) {
-            connectionPath = adaptiveSample(connectionPath, 40, 4);
+//            connectionPath = adaptiveSample(connectionPath, 40, 4);
             result.append(connectionPath);
         }
 
