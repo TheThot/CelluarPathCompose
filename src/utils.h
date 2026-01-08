@@ -676,7 +676,7 @@ namespace baseFunc {
         }
         double squareWhole = polygonArea(whole);
 
-        std::cout << "utilz [updateCellRule] squareWhole is " << squareWhole << " sumSq is " << sumSq << " min is " << min << std::endl;
+        // std::cout << "utilz [updateCellRule] squareWhole is " << squareWhole << " sumSq is " << sumSq << " min is " << min << std::endl;
 
         rule = (squareWhole == 0) ? 0 : (std::abs(squareWhole - min) < 1e-1) ? 2 : 1; // squareWhole == min входит в 2
 
@@ -848,16 +848,11 @@ namespace baseFunc {
         return rotated;
     }
 
-    static bool intersectionListFormimgRoutine(const QLineF& l1, const QLineF& l2, QList<QPointF>& intersections_list, int foundingType,
-                                        uint64_t maxBoundSurvPolyRad = 1e3)
+    static bool intersectionListFormimgRoutine(const QLineF& l1, const QLineF& l2, QList<QPointF>& intersections_list, int foundingType)
     {
         // на случай QLineF::UnboundedIntersection ограничиваем возможные пересечения за пределами области определения линий самым большим размером = max(SurvPolyBoundRect)
         QPointF resIntersection{0,0};
         int flag = l1.intersect(l2, &resIntersection);
-
-        if(flag != 0) // берём l2 в условие потому что это линия должна быть со структуры полигона with holes
-            if(static_cast<uint64_t>(QLineF(l2.p1(), resIntersection).length()) > maxBoundSurvPolyRad)
-                return false;
 
         if (flag == foundingType)
             if (!intersections_list.contains(resIntersection))

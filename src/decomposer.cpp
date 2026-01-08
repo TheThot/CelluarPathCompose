@@ -255,7 +255,7 @@ std::vector<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& pol
             edge = QLineF(rotatedPolygon[j], rotatedPolygon[k]);
 
             // Проверяем пересечение
-            intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+            intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection);
         }
 
         // Сортируем пересечения
@@ -386,8 +386,8 @@ void Decomposer::newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap
         QLineF currHoleLine = QLineF(hole[i], hole[k]);
         currHoleLine = extendLineBothWays(currHoleLine, 0.5); // для надёжности удлиняем линии границ hole
 
-        intersectionListFormimgRoutine(currParallelOrientLineL, currHoleLine, intersectionsL_list, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
-        intersectionListFormimgRoutine(currParallelOrientLineR, currHoleLine, intersectionsR_list, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+        intersectionListFormimgRoutine(currParallelOrientLineL, currHoleLine, intersectionsL_list, QLineF::BoundedIntersection);
+        intersectionListFormimgRoutine(currParallelOrientLineR, currHoleLine, intersectionsR_list, QLineF::BoundedIntersection);
     }
     //пересечения определены, после вычисляем расстояния соотвественно до D и U заносим в массив и сортируем
     // финальные линии returnUp и returnDown формируем мин расстоянием соответсвенно
@@ -417,8 +417,12 @@ void Decomposer::newParallFormingRoutine(const QMap<OrientedLine, QLineF>& inMap
     {
         int k = (i + 1) % survPolyBound.count();
         auto buffLine = QLineF(survPolyBound[i], survPolyBound[k]);
-        intersectionListFormimgRoutine(parallelL, buffLine, resIntersectionsL, QLineF::UnboundedIntersection, maxBoundSurvPolyRad);
-        intersectionListFormimgRoutine(parallelR, buffLine, resIntersectionsR, QLineF::UnboundedIntersection, maxBoundSurvPolyRad);
+        if (intersectionListFormimgRoutine(parallelL, buffLine, resIntersectionsL, QLineF::UnboundedIntersection))
+            if (!isPointOnLineF(resIntersectionsL.last(), buffLine))
+                resIntersectionsL.pop_back();
+        if (intersectionListFormimgRoutine(parallelR, buffLine, resIntersectionsR, QLineF::UnboundedIntersection))
+            if (!isPointOnLineF(resIntersectionsR.last(), buffLine))
+                resIntersectionsR.pop_back();
     }
     returnL = QLineF(resIntersectionsL[0], resIntersectionsL[1]);
     returnR = QLineF(resIntersectionsR[0], resIntersectionsR[1]);
@@ -579,9 +583,12 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
                 buff.append(rotatedPolygon[j]);
             }
             edge = QLineF(rotatedPolygon[j], rotatedPolygon[k]);
-            intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+            intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection);
         }
-        buff.append(intersections[0]); buff.append(intersections[1]);
+        if (intersections.count() != 0)
+        {
+            buff.append(intersections[0]); buff.append(intersections[1]);
+        }
         buff = rotationStruct<QPolygonF>(buff, -sweepAngle); // поворачиваем обратно точки декомпозиции
         buff = sortPolygonClockwise(buff);
         resCells.append(buff);
@@ -597,7 +604,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
     lambdaLREdges(sweepAngle, yMinHole, yMinPoly, rotatedPolygon, resCells, false);
     // ------------ в промежутках ----------------
     // на практике Mannner biggerThanPoly rotation is clockwise может являться индикатором актуальности этой cell 0 - добавляем, 1 - скипаем
-    auto lambdaBetwenes = [this] (const QList<QMap<OrientedLine, QLineF>>& copy,
+    auto lambdaBetwenes = [] (const QList<QMap<OrientedLine, QLineF>>& copy,
                                                                                           const QPolygonF& polygon,
                                                                                           QList<QPolygonF>& resCells, bool isReverse){
         QPolygonF buff;
@@ -624,8 +631,8 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
                 if(biggerThanPoly.containsPoint(polygon[j], Qt::WindingFill)){ // containsPoint QPolygonF нужно усиливать для точек на краю
                     buff.append(polygon[j]);
                 }
-                intersectionListFormimgRoutine(firstPar, edge, intersections, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
-                intersectionListFormimgRoutine(secPar, edge, intersections, QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+                intersectionListFormimgRoutine(firstPar, edge, intersections, QLineF::BoundedIntersection);
+                intersectionListFormimgRoutine(secPar, edge, intersections, QLineF::BoundedIntersection);
             }
             for (const auto& currP: intersections)
             {
@@ -655,7 +662,7 @@ bool Decomposer::updateOrientedLine3(QList<QMap<OrientedLine, QLineF>>& inMap, i
     for(int j = 0; j < inMap.count(); ++j){
         if(j != _h1) {
             intersectionListFormimgRoutine(currParr, inMap[j][OrientedLine::PerpendiclSweepD], intersections,
-                                           QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+                                           QLineF::BoundedIntersection);
         }
     }
     if(intersections.count() == 0)
@@ -667,7 +674,7 @@ bool Decomposer::updateOrientedLine3(QList<QMap<OrientedLine, QLineF>>& inMap, i
     for(int j = 0; j < inMap.count(); ++j){
         if(j != _h2) {
             intersectionListFormimgRoutine(currParr, inMap[j][OrientedLine::PerpendiclSweepU], intersections,
-                                           QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+                                           QLineF::BoundedIntersection);
         }
     }if(intersections.count() == 0)
         return false;
@@ -695,7 +702,7 @@ bool Decomposer::updateOrientedLine1(QList<QMap<OrientedLine, QLineF>>& inMap, i
     for(int j = 0; j < inMap.count(); ++j){
         if(j != _h2) {
             intersectionListFormimgRoutine(currParr, inMap[j][OrientedLine::PerpendiclSweepD], intersections,
-                                           QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+                                           QLineF::BoundedIntersection);
         }
     }
     if(intersections.count() == 0)
@@ -707,7 +714,7 @@ bool Decomposer::updateOrientedLine1(QList<QMap<OrientedLine, QLineF>>& inMap, i
     for(int j = 0; j < inMap.count(); ++j){
         if(j != _h1) {
             intersectionListFormimgRoutine(currParr, inMap[j][OrientedLine::PerpendiclSweepU], intersections,
-                                           QLineF::BoundedIntersection, maxBoundSurvPolyRad);
+                                           QLineF::BoundedIntersection);
         }
     }
     if(intersections.count() == 0)
@@ -737,13 +744,9 @@ void Decomposer::updateOrientedLine2(QList<QMap<OrientedLine, QLineF>>& inMap, i
         for(int j = 0; j < inMap.count(); ++j){
             if(i != j) {
                 intersectionListFormimgRoutine(currParrR, inMap[j][OrientedLine::PerpendiclSweepU], intersectionsR,
-                                               QLineF::BoundedIntersection, maxBoundSurvPolyRad);
-                /*intersectionListFormimgRoutine(currParrR, inMap[j][OrientedLine::PerpendiclSweepD], intersectionsR,
-                                               QLineF::BoundedIntersection, maxBoundSurvPolyRad);*/
+                                               QLineF::BoundedIntersection);
                 intersectionListFormimgRoutine(currParrL, inMap[j][OrientedLine::PerpendiclSweepU], intersectionsL,
-                                               QLineF::BoundedIntersection, maxBoundSurvPolyRad);
-               /* intersectionListFormimgRoutine(currParrL, inMap[j][OrientedLine::PerpendiclSweepD], intersectionsL,
-                                               QLineF::BoundedIntersection, maxBoundSurvPolyRad);*/
+                                               QLineF::BoundedIntersection);
             }
         }
         QList<double> disR_list, disL_list;
@@ -783,7 +786,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
     // modify first 2 * holes.count cells of compact func resCell
     // сделаем чтобы все зоны строго были поделены для дальнейшего path cover
     auto check = _updateCellRule(&holes, &resCells);
-    std::cout << "Rule is " << check << std::endl;
+    // std::cout << "Rule is " << check << std::endl;
 
     int h1, h2;
     QList<double> square;
