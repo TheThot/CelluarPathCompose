@@ -58,10 +58,14 @@ PathsD PolyBuilder::_substractS(const PathsD& workingClips){
     // Преобразуем PathsD в Paths64
     Paths64 clips64 = ScalePaths<int64_t, double>(workingClips, scale_factor, _error_code);
 
+    // сначала добавляем + смещение чтобы секции не совпадали
+    auto offsetPolygons = _offsetPolygons(clips64, 1);
+
     // Выполняем операцию вычитания
     Clipper64 clipper;
+
     clipper.AddSubject({working_precision});
-    clipper.AddClip(clips64);  // Добавляем все clip полигоны
+    clipper.AddClip(offsetPolygons);  // Добавляем все clip полигоны
 
     Paths64 solution;
     clipper.Execute(ClipType::Difference,
@@ -201,3 +205,75 @@ QPolygonF PolyBuilder::snglIntersctnWrp(const QPolygonF &poly1, const QPolygonF 
     return res;
 }
 
+// Добавляем небольшое смещение к clip полигонам
+Paths64 PolyBuilder::_offsetPolygons(const Paths64& polygons, double delta) {
+    Clipper2Lib::ClipperOffset offsetter;
+
+    // Настройки offset
+    Clipper2Lib::JoinType joinType = Clipper2Lib::JoinType::Square;
+    Clipper2Lib::EndType endType = Clipper2Lib::EndType::Polygon;
+
+    offsetter.AddPaths(polygons, joinType, endType);
+
+    Paths64 solution;
+    offsetter.Execute(delta, solution);
+
+    return solution;
+}
+
+PathsD PolyBuilder::_union(const PathsD& workingClip){
+    // Преобразуем PathsD в Paths64
+    Paths64 clips64 = ScalePaths<int64_t, double>(workingClip, scale_factor, _error_code);
+    // сначала добавляем + смещение чтобы секции не совпадали
+    auto offsetPolygons = _offsetPolygons(clips64, 1);
+    // Выполняем операцию объединения
+    // Выполняем операцию объединения ВСЕХ полигонов как Subject
+    Clipper64 clipper;
+    clipper.AddSubject(offsetPolygons);  // ВСЕ полигоны добавляем как subject
+
+    Paths64 solution;
+    clipper.Execute(ClipType::Union,
+                    FillRule::NonZero,
+                    solution);
+
+    return ScalePaths<double, int64_t>(solution, 1.0 / scale_factor, _error_code);
+}
+
+QList<QPolygonF> PolyBuilder::unitedListWrp(const QList<QPolygonF> &poly2) {
+    auto res = QList<QPolygonF>();
+
+    if (poly2.isEmpty()) {
+        return res;
+    }
+
+    // Подготавливаем все clip полигоны
+    PathsD clip;
+    for (const auto &currPoly : poly2) {
+        if (currPoly.isEmpty()) continue;
+
+        PathD oneClip;
+        for (const auto &p : currPoly) {
+            oneClip.push_back(PointD(p.x(), p.y()));
+        }
+        clip.push_back(oneClip);  // ВАЖНО: добавляем в вектор!
+    }
+
+    // Используем новую функцию для вычитания многих полигонов
+    auto resClipper = _union(clip);
+
+//    std::cout << "[poly_build] resClipper size " << resClipper.size() << std::endl;
+
+    for (const auto &onePoly : resClipper) {
+        QPolygonF temPoly;
+        for (const auto &p: onePoly)
+            temPoly << QPointF(p.x, p.y);
+        res.append(temPoly);
+    }
+
+    if(res.isEmpty()){
+        std::cout << "Warning [poly_build] union result is empty\n";
+        return res;
+    }
+
+    return res;
+}

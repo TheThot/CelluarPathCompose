@@ -157,9 +157,7 @@ private:
     QPointF inverseRotatePoint(const QPointF& point, double angle);
     double computePolygonArea(const QPolygonF& polygon) const;
     void feedHolesInfoIn();
-    bool updateOrientedLine1(QList<QMap<OrientedLine, QLineF>>& inMap, int h1, int h2);
-    void updateOrientedLine2(QList<QMap<OrientedLine, QLineF>>& inMap, int h1, int h2);
-    bool updateOrientedLine3(QList<QMap<OrientedLine, QLineF>>& inMap, int h1, int h2);
+    void updateOrientedLine(QList<QMap<OrientedLine, QLineF>>& inMap);
 
     template< typename Type > QVariantList configListVariantLists(Type in_array) const{
         QVariantList result;

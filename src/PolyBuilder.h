@@ -42,6 +42,8 @@ public:
 
     QPolygonF q_getResult();
 
+    QList<QPolygonF> unitedListWrp(const QList<QPolygonF> &poly2);
+
     QList<QPolygonF> subtractedListWrp(const QPolygonF &poly1, const QList<QPolygonF> &poly2);
 
     QList<QPolygonF> subtractedListWrp(const QPolygonF &poly1, const QPolygonF &poly2);
@@ -56,6 +58,9 @@ private:
 
     PathsD _substract(const Path64& workingClip);
     PathsD _substractS(const PathsD& workingClip);
+
+    Paths64 _offsetPolygons(const Paths64& polygons, double delta);
+    PathsD _union(const PathsD& workingClip);
 
     // Для хранения - double (максимальная точность)
     PathD storage_precision;

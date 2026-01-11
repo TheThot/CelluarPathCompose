@@ -167,7 +167,7 @@ namespace baseFunc {
         return res;
     }
 
-    static int _updateCellRule(const QList<QPolygonF>* _holes, const QList<QPolygonF>* _bpd_decompositionCells){
+    static int updateCellRule(const QList<QPolygonF>* _holes, const QList<QPolygonF>* _bpd_decompositionCells){
         int rule = 0;
 
         if(_holes == nullptr){

@@ -503,8 +503,6 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         buffP.second = holeBorderDown[i];
         _holeData.holeBorderSegm[&m_holes[i]] = buffP;
         // 2. В compact реализации 2 и 3 пункт пропускаем
-        copy[i][OrientedLine::ParallelSweepL] = extendLineBothWays(copy[i][OrientedLine::ParallelSweepL], 10);
-        copy[i][OrientedLine::ParallelSweepR] = extendLineBothWays(copy[i][OrientedLine::ParallelSweepR], 10);
     }
     // поворачиваем полигон SurvPoly
     auto rotatedPolygon = rotationStruct<QPolygonF>(m_orientedRect, sweepAngle);
@@ -532,108 +530,25 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
     }
 
     // ------------------------ внесения крайних зон и в промежутках с использованием clipper -------------------------------
-    QPolygonF whole;
-    for(const auto& curr: resCells){
-        whole = whole.united(curr);
+    QList<QPolygonF> whole;
+    for(auto& curr: resCells){
+        curr.append(curr[0]);
     }
+    whole = _pb.unitedListWrp(resCells);
     auto listEdgesCells = _pb.subtractedListWrp(m_orientedRect, whole);
     std::cout << "Size of listEdgesCells is " << listEdgesCells.count() << std::endl;
     for(const auto& curr: listEdgesCells){
         resCells.append(curr);
     }
 
-//    mapOriendtedHoleRectLines = copy;
+    mapOriendtedHoleRectLines = copy;
 
 //    std::cout << "Size of cell decmps is " << resCells.count() << std::endl;
 
     return resCells;
 }
 
-bool Decomposer::updateOrientedLine3(QList<QMap<OrientedLine, QLineF>>& inMap, int h1, int h2){
-    QList<QPointF> intersections;
-    int _h1 = h1, _h2 = h2;
-    if(h2 > h1) {
-        _h1 = h2;
-        _h2 = h1;
-    }
-    auto currParr = inMap[_h1][OrientedLine::ParallelSweepL];
-    // проверяем пересечения для линий ParallelSweepL и ParallelSweepR из mapOriendtedHoleRectLines до новых возможных границ c Holes
-    for(int j = 0; j < inMap.count(); ++j){
-        if(j != _h1) {
-            intersectionListFormimgRoutine(currParr, inMap[j][OrientedLine::PerpendiclSweepD], intersections,
-                                           QLineF::BoundedIntersection);
-        }
-    }
-    if(intersections.count() == 0)
-        return false;
-    inMap[_h2][OrientedLine::PerpendiclSweepU].setP2(intersections[0]);
-    intersections.clear();
-    currParr = inMap[_h2][OrientedLine::ParallelSweepR];
-    // проверяем пересечения для линий ParallelSweepL и ParallelSweepR из mapOriendtedHoleRectLines до новых возможных границ c Holes
-    for(int j = 0; j < inMap.count(); ++j){
-        if(j != _h2) {
-            intersectionListFormimgRoutine(currParr, inMap[j][OrientedLine::PerpendiclSweepU], intersections,
-                                           QLineF::BoundedIntersection);
-        }
-    }if(intersections.count() == 0)
-        return false;
-    inMap[_h1][OrientedLine::PerpendiclSweepD].setP1(intersections[0]);
-
-    if(h2 > h1) {
-        inMap[h1][OrientedLine::ParallelSweepR].setP2(inMap[h2][OrientedLine::ParallelSweepL].p2());
-        inMap[h2][OrientedLine::ParallelSweepL].setP1(inMap[h1][OrientedLine::ParallelSweepR].p1());
-    }else{
-        inMap[h2][OrientedLine::ParallelSweepR].setP2(inMap[h1][OrientedLine::ParallelSweepL].p2());
-        inMap[h1][OrientedLine::ParallelSweepL].setP1(inMap[h2][OrientedLine::ParallelSweepR].p1());
-    }
-    return true;
-}
-
-bool Decomposer::updateOrientedLine1(QList<QMap<OrientedLine, QLineF>>& inMap, int h1, int h2){
-    QList<QPointF> intersections;
-    int _h1 = h1, _h2 = h2;
-    if(h2 > h1) {
-        _h1 = h2;
-        _h2 = h1;
-    }
-    auto currParr = inMap[_h2][OrientedLine::ParallelSweepL];
-    // проверяем пересечения для линий ParallelSweepL и ParallelSweepR из mapOriendtedHoleRectLines до новых возможных границ c Holes
-    for(int j = 0; j < inMap.count(); ++j){
-        if(j != _h2) {
-            intersectionListFormimgRoutine(currParr, inMap[j][OrientedLine::PerpendiclSweepD], intersections,
-                                           QLineF::BoundedIntersection);
-        }
-    }
-    if(intersections.count() == 0)
-        return false;
-    inMap[_h1][OrientedLine::PerpendiclSweepD].setP2(intersections[0]);
-    intersections.clear();
-    currParr = inMap[_h1][OrientedLine::ParallelSweepR];
-    // проверяем пересечения для линий ParallelSweepL и ParallelSweepR из mapOriendtedHoleRectLines до новых возможных границ c Holes
-    for(int j = 0; j < inMap.count(); ++j){
-        if(j != _h1) {
-            intersectionListFormimgRoutine(currParr, inMap[j][OrientedLine::PerpendiclSweepU], intersections,
-                                           QLineF::BoundedIntersection);
-        }
-    }
-    if(intersections.count() == 0)
-        return false;
-    inMap[_h2][OrientedLine::PerpendiclSweepU].setP1(intersections[0]);
-
-    if(h2 > h1) {
-        inMap[h2][OrientedLine::ParallelSweepR].setP1(inMap[h1][OrientedLine::ParallelSweepL].p1());
-        inMap[h1][OrientedLine::ParallelSweepL].setP2(inMap[h2][OrientedLine::ParallelSweepR].p2());
-    }else{
-        inMap[h1][OrientedLine::ParallelSweepR].setP1(inMap[h2][OrientedLine::ParallelSweepL].p1());
-        inMap[h2][OrientedLine::ParallelSweepL].setP2(inMap[h1][OrientedLine::ParallelSweepR].p2());
-    }
-    return true;
-}
-
-void Decomposer::updateOrientedLine2(QList<QMap<OrientedLine, QLineF>>& inMap, int h1, int h2){
-    bool flag = false;
-    if(h2 > h1)
-        flag = true;
+void Decomposer::updateOrientedLine(QList<QMap<OrientedLine, QLineF>>& inMap){
     for(int i = 0; i < inMap.count(); ++i){
         QList<QPointF> intersectionsR;
         QList<QPointF> intersectionsL;
@@ -649,26 +564,30 @@ void Decomposer::updateOrientedLine2(QList<QMap<OrientedLine, QLineF>>& inMap, i
             }
         }
         QList<double> disR_list, disL_list;
-        if(flag) {
-            disR_list = distanceToPointRoutine(inMap[i][OrientedLine::ParallelSweepR].p1(), intersectionsR);
-            disL_list = distanceToPointRoutine(inMap[i][OrientedLine::ParallelSweepL].p1(), intersectionsL);
-        }else{
-            disR_list = distanceToPointRoutine(inMap[i][OrientedLine::ParallelSweepR].p2(), intersectionsR);
-            disL_list = distanceToPointRoutine(inMap[i][OrientedLine::ParallelSweepL].p2(), intersectionsL);
-        }
+        disR_list = distanceToPointRoutine(inMap[i][OrientedLine::PerpendiclSweepU].p2(), intersectionsR);
+        disL_list = distanceToPointRoutine(inMap[i][OrientedLine::PerpendiclSweepU].p1(), intersectionsL);
+        QList<QPointF> LlistParralel, RlistParralel;
+        LlistParralel += inMap[i][OrientedLine::ParallelSweepL].p1(); LlistParralel += inMap[i][OrientedLine::ParallelSweepL].p2();
+        RlistParralel += inMap[i][OrientedLine::ParallelSweepR].p1(); RlistParralel += inMap[i][OrientedLine::ParallelSweepR].p2();
+        QList<double> dist_listParrL, dist_listParrR;
+        dist_listParrR = distanceToPointRoutine(inMap[i][OrientedLine::PerpendiclSweepU].p2(), RlistParralel);
+        dist_listParrL = distanceToPointRoutine(inMap[i][OrientedLine::PerpendiclSweepU].p1(), LlistParralel);
 
         auto resIdxR = sort_indexes<double>(disR_list);
         auto resIdxL = sort_indexes<double>(disL_list);
-        if(flag) {
-            if (intersectionsR.count() >= 1)
-                inMap[i][OrientedLine::ParallelSweepR].setP1(intersectionsR[resIdxR[0]]);
-            if (intersectionsL.count() >= 1)
-                inMap[i][OrientedLine::ParallelSweepL].setP1(intersectionsL[resIdxL[0]]);
-        }else{
-            if (intersectionsR.count() >= 1)
+        auto resIdxRextra = sort_indexes<double>(dist_listParrR);
+        auto resIdxLextra = sort_indexes<double>(dist_listParrL);
+        if (intersectionsR.count() >= 1) {
+            if (resIdxRextra[0] == 0)
                 inMap[i][OrientedLine::ParallelSweepR].setP2(intersectionsR[resIdxR[0]]);
-            if (intersectionsL.count() >= 1)
+            else
+                inMap[i][OrientedLine::ParallelSweepR].setP1(intersectionsR[resIdxR[0]]);
+        }
+        if (intersectionsL.count() >= 1) {
+            if (resIdxLextra[0] == 0)
                 inMap[i][OrientedLine::ParallelSweepL].setP2(intersectionsL[resIdxL[0]]);
+            else
+                inMap[i][OrientedLine::ParallelSweepL].setP1(intersectionsL[resIdxL[0]]);
         }
     }
 }
@@ -682,32 +601,15 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
     QList<QMap<OrientedLine, QLineF>> copy = mapOriendtedHoleRectLines;
     resCells = boustrophedonDecomposition_compact(polygon, holes, copy, sweepAngle);
 
-    // modify first 2 * holes.count cells of compact func resCell
-    // сделаем чтобы все зоны строго были поделены для дальнейшего path cover
-    /*auto check = _updateCellRule(&holes, &resCells);
-//    std::cout << "Rule is " << check << std::endl;
+    auto check = updateCellRule(&holes, &resCells);
 
-    int h1, h2;
-    QList<double> square;
-    for(int i = 0; i < holes.count(); ++i){
-        square.append(polygonArea(holes[i]));
-    }
-    auto hs = sort_indexes<double>(square);
-    h1 = hs[1];
-    h2 = hs[0];
+//    if(check == 2)
+        updateOrientedLine(copy);
 
-    bool flag1 = false, flag3 = false;
-    if(check == 2)
-        updateOrientedLine2(copy, h1, h2);
-    else
-        if(check == 1) {
-            flag1 = updateOrientedLine1(copy, h1, h2);
-            flag3 = updateOrientedLine3(copy, h1, h2);
-        }
-//    std::cout << "[boustrophedonDecomposition] here " <<  check << std::endl;
-
-    QPolygonF buff;
-    if(check > 0) {
+    QMap<int, QPolygonF> resOp;
+    if(check == 2) { // условие что один из inner hole полностью внутри чужой cell
+        QPolygonF buff;
+        int foundI = -1, foundJ = -1;
         // ------------ решение для зон с U и D ----------------
         int j = 0;
 //        resCells.clear();
@@ -717,7 +619,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
                  << copy[i][OrientedLine::PerpendiclSweepU].p2()
                  << copy[i][OrientedLine::ParallelSweepL].p2()
                  << copy[i][OrientedLine::ParallelSweepR].p2();
-            buff = sortPolygonClockwise(buff);
+            buff = sortPolygonCounterClockwise(buff);
 //            resCells.append(buff);
             resCells.replace(j, buff);
             buff.clear();
@@ -725,69 +627,69 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
                  << copy[i][OrientedLine::PerpendiclSweepD].p2()
                  << copy[i][OrientedLine::ParallelSweepL].p1()
                  << copy[i][OrientedLine::ParallelSweepR].p1();
-            buff = sortPolygonClockwise(buff);
+            buff = sortPolygonCounterClockwise(buff);
 //            resCells.append(buff);
-            resCells.replace(j+1, buff);
+            resCells.replace(j + 1, buff);
             j += 2;
         }
-        if (check == 1)
-        {
-            // допом ещё cell
-            if(flag1) {
-                buff.clear();
-                buff << copy[0][OrientedLine::PerpendiclSweepU].p1()
-                     << copy[1][OrientedLine::PerpendiclSweepU].p2()
-                     << copy[1][OrientedLine::PerpendiclSweepD].p2()
-                     << copy[0][OrientedLine::PerpendiclSweepD].p1();
-                //            buff = sortPolygonClockwise(buff);
-                resCells.append(buff);
-            }
-            if(flag3){
-                buff.clear();
-                buff << copy[1][OrientedLine::PerpendiclSweepU].p1()
-                     << copy[0][OrientedLine::PerpendiclSweepU].p2()
-                     << copy[0][OrientedLine::PerpendiclSweepD].p2()
-                     << copy[1][OrientedLine::PerpendiclSweepD].p1();
-                //            buff = sortPolygonClockwise(buff);
-                resCells.append(buff);
-            }
-        }else{
-            //TODO определить что лучше polygon operation или construction
-            if(check == 2){
-                if(h2 > h1) {
-                    resCells.removeAt(0);
-                    buff.clear();
-                    buff << copy[h1][OrientedLine::PerpendiclSweepU].p1()
-                         << copy[h2][OrientedLine::ParallelSweepL].p1()
-                         << copy[h2][OrientedLine::ParallelSweepL].p2()
-                         << copy[h1][OrientedLine::ParallelSweepL].p2();
-                    resCells.prepend(buff);
-                    buff.clear();
-                    buff << copy[h1][OrientedLine::PerpendiclSweepU].p2()
-                         << copy[h2][OrientedLine::ParallelSweepR].p1()
-                         << copy[h2][OrientedLine::ParallelSweepR].p2()
-                         << copy[h1][OrientedLine::ParallelSweepR].p2();
-                    resCells.prepend(buff);
-                }else{
-                    resCells.removeAt(3);
-                    buff.clear();
-                    buff << copy[h1][OrientedLine::PerpendiclSweepU].p2()
-                         << copy[h2][OrientedLine::ParallelSweepR].p2()
-                         << copy[h2][OrientedLine::ParallelSweepR].p1()
-                         << copy[h1][OrientedLine::ParallelSweepR].p1();
-                    buff = sortPolygonClockwise(buff);
-                    resCells.prepend(buff);
-                    buff.clear();
-                    buff << copy[h1][OrientedLine::PerpendiclSweepU].p1()
-                         << copy[h2][OrientedLine::ParallelSweepL].p2()
-                         << copy[h2][OrientedLine::ParallelSweepL].p1()
-                         << copy[h1][OrientedLine::ParallelSweepL].p1();
-                    buff = sortPolygonClockwise(buff);
-                    resCells.prepend(buff);
-                }
+        // определяемся какой вырезать / какой объединять
+        for (int i = 0; i < copy.count()*2; ++i) { // cells
+            for (j = 0; j < copy.count(); ++j) { // holes
+                if(i != j*2 && i != j*2 + 1)
+                    if (resCells[i].containsPoint(copy[j][OrientedLine::PerpendiclSweepD].p1(), Qt::OddEvenFill))
+                    {
+                        foundI = i; // cell в которой
+                        foundJ = j; // hole
+                    }
             }
         }
-    }*/
+        j = foundJ;
+        // из для foundI cell вырезаем union cells у hole foundJ
+        QList<QPolygonF> whole;
+        whole.append(resCells[j*2]);
+        whole.append(resCells[j*2+1]);
+        whole = _pb.unitedListWrp(whole);
+        auto listEdgesCells = _pb.subtractedListWrp(resCells[foundI], whole);
+        resCells.removeAt(foundI);
+        for(const auto& curr: listEdgesCells){
+            resCells.prepend(curr);
+        }
+    }else{
+        if(check == 1){ // случай касания краями
+            // определяемся какой вырезать / какой объединять
+            QList<int> foundIarray, foundJarray;
+            for (int i = 0; i < resCells.count(); ++i) { // cells
+                for (int k = 0; k < copy.count(); ++k) { // holes
+                    if(i != k*2 && i != k*2 + 1)
+                        if (resCells[i].containsPoint(copy[k][OrientedLine::PerpendiclSweepD].p1(),
+                                                      Qt::OddEvenFill) ||
+                            resCells[i].containsPoint(copy[k][OrientedLine::PerpendiclSweepD].p2(),
+                                                      Qt::OddEvenFill)) {
+                            foundIarray.append(i); // cell в которой
+                            foundJarray.append(k); // hole
+                        }
+                }
+            }
+            if(foundIarray.count() > 0) {
+                resOp[-1] = _pb.snglIntersctnWrp(resCells[foundIarray[0]], resCells[foundIarray[1]]); // вынужден вначале положить в сторону
+                for (int k = 0; k < foundIarray.count(); ++k) {
+                    QList<QPolygonF> whole = {};
+                    whole.append(resCells[foundJarray[k]*2]);
+                    whole.append(resCells[foundJarray[k]*2+1]);
+//                    whole = _pb.unitedListWrp(whole);
+                    auto singleCell = _pb.subtractedListWrp(resCells[foundIarray[k]], whole);
+                    std::cout << "Size of singleCell is " << singleCell.count() << std::endl;
+                    if(singleCell.count() > 0)
+                        resOp[foundIarray[k]] = singleCell[0]; // вынужден вначале положить в сторону иначе логика ломается
+                }
+                // и только теперь заменить
+                for (int k = 0; k < foundIarray.count(); ++k) {
+                    resCells[foundIarray[k]] = resOp[foundIarray[k]];
+                }
+                resCells.append(resOp[-1]);
+            }
+        }
+    }
 
     return resCells;
 }
