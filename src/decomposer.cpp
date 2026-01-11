@@ -439,7 +439,6 @@ T Decomposer::rotationStruct(const T& v, double sweepAngle) {
 }
 
 void Decomposer::iniAllAlliasBCD(int size, QList<QMap<OrientedLine, QLineF>>& copy,
-                                QList<QList<qreal>>& yLevelsHolesList,
                                 QList<QPolygonF>& readyPolyUp, QList<QPolygonF>& readyPolyDown,
                                 QList<QList<QPointF>>& holeBorderUp,
                                 QList<QList<QPointF>>& holeBorderDown)
@@ -449,11 +448,9 @@ void Decomposer::iniAllAlliasBCD(int size, QList<QMap<OrientedLine, QLineF>>& co
     readyPolyDown.reserve(size);
     holeBorderUp.reserve(size);
     holeBorderDown.reserve(size);
-    yLevelsHolesList.reserve(size);
 
     for (int i = 0; i < size; ++i) {
         copy.append(QMap<OrientedLine, QLineF>{});
-        yLevelsHolesList.append(QList<qreal>{});
         readyPolyUp.append(QPolygonF{});
         readyPolyDown.append(QPolygonF{});
         holeBorderUp.append(QList<QPointF>{});
@@ -477,29 +474,16 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
     }
 
     QList<QMap<OrientedLine, QLineF>> copy;
-    QList<QList<qreal>> yLevelsHolesList;
     QList<QPolygonF> readyPolyUp, readyPolyDown;
     QList<QList<QPointF>> holeBorderUp, holeBorderDown;
-    iniAllAlliasBCD(mapOriendtedHoleRectLines.count(), copy, yLevelsHolesList, readyPolyUp, readyPolyDown, holeBorderUp, holeBorderDown);
+
+    // ------------!!!!!!!!!!!!!!!!!!!!!!!---------------------------
+    iniAllAlliasBCD(mapOriendtedHoleRectLines.count(), copy, readyPolyUp, readyPolyDown, holeBorderUp, holeBorderDown);
     const auto& copySurvPolyBound = m_orientedRect; // убедиться что m_orientedRect создан на момент вызова boustrophedonDecomposition
 
-    // ------------вспомогательные функции--------------------------
-    auto flambdaDirect = [](const QLineF& in) {
-        QPolygonF buff;
-        buff.reserve(2);
-        buff << in.p1() << in.p2();
-        return buff;
-    };
-    auto flambdaReverse = [](const QPolygonF& in) {
-        return QLineF(in[0], in[1]);
-    };
-    // ------------!!!!!!!!!!!!!!!!!!!!!!!---------------------------
-
-    QList<qreal> yLevelsOrientLines;
     for(int i = 0; i < mapOriendtedHoleRectLines.count(); ++i) //распаковываем по одной штук на каждую hole
     {
         QPair<QList<QPointF>,QList<QPointF>> buffP;
-        QLineF parallelSweepLRot, parallelSweepRRot;
         // Организация данных в новую структуру схожую с mapOriendtedHoleRectLines
         // 0. Preprocessing получаем линии Parallel L и R длинные до пересечений boundedRect SurvPoly
         newParallFormingRoutine(mapOriendtedHoleRectLines[i], copySurvPolyBound,
@@ -519,35 +503,12 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         buffP.second = holeBorderDown[i];
         _holeData.holeBorderSegm[&m_holes[i]] = buffP;
         // 2. В compact реализации 2 и 3 пункт пропускаем
-        // 4. Поворот Parallel L и R
-        QPolygonF buff = flambdaDirect(copy[i][OrientedLine::ParallelSweepL]);
-        parallelSweepLRot = flambdaReverse(rotationStruct<QPolygonF>(buff, sweepAngle));
-        buff = flambdaDirect(copy[i][OrientedLine::ParallelSweepR]);
-        parallelSweepRRot = flambdaReverse(rotationStruct<QPolygonF>(buff, sweepAngle));
-        // упорядовачиваем координаты вершин, уникальные, линий ограничивающих зоны
-        // линии паралельны потому без разницы [0] p1 или [1] p2
-        if (!yLevelsOrientLines.contains(parallelSweepLRot.p1().y())) {
-            yLevelsOrientLines.append(parallelSweepLRot.p1().y());
-            yLevelsHolesList[i].append(parallelSweepLRot.p1().y());
-        }
-        if (!yLevelsOrientLines.contains(parallelSweepRRot.p1().y())) {
-            yLevelsOrientLines.append(parallelSweepRRot.p1().y());
-            yLevelsHolesList[i].append(parallelSweepRRot.p1().y());
-        }
+        copy[i][OrientedLine::ParallelSweepL] = extendLineBothWays(copy[i][OrientedLine::ParallelSweepL], 10);
+        copy[i][OrientedLine::ParallelSweepR] = extendLineBothWays(copy[i][OrientedLine::ParallelSweepR], 10);
     }
     // поворачиваем полигон SurvPoly
     auto rotatedPolygon = rotationStruct<QPolygonF>(m_orientedRect, sweepAngle);
     // после того как весь QList mapOriendtedHoleRectLines обработан и сориентрован выполняем деление на зоны
-    // 4. формирование yLevels по аналогии с trapezoidalCellAlgorithm
-    // упорядовачиваем координаты вершин, уникальные
-    QList<qreal> yLevels;
-    for (const QPointF& point : rotatedPolygon) {
-        if (!yLevels.contains(point.y())) {
-            yLevels.append(point.y());
-        }
-    }
-    std::sort(yLevels.begin(), yLevels.end());
-    std::sort(yLevelsOrientLines.begin(), yLevelsOrientLines.end());
 
     // ------------ решение для зон с U и D ----------------
     // в resCells удлинённые ParallelSweepLиR до survPoly границ ячейки
@@ -559,14 +520,14 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
                 << copy[i][OrientedLine::PerpendiclSweepU].p2()
                 << copy[i][OrientedLine::ParallelSweepL].p2()
                 << copy[i][OrientedLine::ParallelSweepR].p2();
-        buff = sortPolygonClockwise(buff);
+        buff = sortPolygonCounterClockwise(buff);
         resCells.append(buff);
         buff.clear();
         buff    << copy[i][OrientedLine::PerpendiclSweepD].p1()
                 << copy[i][OrientedLine::PerpendiclSweepD].p2()
                 << copy[i][OrientedLine::ParallelSweepL].p1()
                 << copy[i][OrientedLine::ParallelSweepR].p1();
-        buff = sortPolygonClockwise(buff);
+        buff = sortPolygonCounterClockwise(buff);
         resCells.append(buff);
     }
 

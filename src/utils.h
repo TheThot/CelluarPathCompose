@@ -436,6 +436,15 @@ namespace baseFunc {
         return polygon;
     }
 
+
+    static QPolygonF sortPolygonCounterClockwise(QPolygonF polygon) {
+        // Сначала сортируем по часовой стрелке
+        polygon = sortPolygonClockwise(polygon);
+        // Затем реверсируем (исключая опорную точку)
+        std::reverse(polygon.begin() + 1, polygon.end());
+        return polygon;
+    }
+
     /**
      * @brief Пролонгирует линию в обе стороны на заданное расстояние
      * @param line Исходная линия
