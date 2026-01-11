@@ -57,18 +57,6 @@ private:
     PathsD _substract(const Path64& workingClip);
     PathsD _substractS(const PathsD& workingClip);
 
-    // Закрыть QPolygonF (добавить первую точку в конец если не совпадает)
-    static QPolygonF closePolygon(const QPolygonF& polygon);
-
-    // Проверить, закрыт ли полигон
-    static bool isPolygonClosed(const QPolygonF& polygon);
-
-    // Закрыть PathD (для внутреннего использования)
-    static PathD closePathD(const PathD& path);
-
-    // Проверить, закрыт ли PathD
-    static bool isPathDClosed(const PathD& path);
-
     // Для хранения - double (максимальная точность)
     PathD storage_precision;
 

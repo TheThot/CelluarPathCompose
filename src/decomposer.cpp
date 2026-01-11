@@ -538,7 +538,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         resCells.append(curr);
     }
 
-    mapOriendtedHoleRectLines = copy;
+//    mapOriendtedHoleRectLines = copy;
 
 //    std::cout << "Size of cell decmps is " << resCells.count() << std::endl;
 
@@ -680,7 +680,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
 
     // modify first 2 * holes.count cells of compact func resCell
     // сделаем чтобы все зоны строго были поделены для дальнейшего path cover
-    auto check = _updateCellRule(&holes, &resCells);
+    /*auto check = _updateCellRule(&holes, &resCells);
 //    std::cout << "Rule is " << check << std::endl;
 
     int h1, h2;
@@ -783,7 +783,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
                 }
             }
         }
-    }
+    }*/
 
     return resCells;
 }
