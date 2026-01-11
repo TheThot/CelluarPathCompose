@@ -6,6 +6,7 @@
 #define DECOMPOSER_H
 
 #include "path_generator.h"
+#include "PolyBuilder.h"
 #include <QObject>
 #include <QVector>
 #include <QPointF>
@@ -193,6 +194,7 @@ private:
     QList<QPolygonF> m_orientedHoleRects;
     QList<QMap<OrientedLine, QLineF>> m_mapOriendtedHoleRectLines; // переменная с информацией какая из ограничивающего holes фигуры паралельна галсу или нет
 
+    PolyBuilder    _pb;
     PathGenerator* _transects;
     bool            _isPathShow;
     double          _trWidth;

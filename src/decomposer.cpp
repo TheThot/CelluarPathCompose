@@ -16,6 +16,7 @@ Decomposer::Decomposer(QObject *parent)
     , m_showDecomposition(true)
     , m_showOrientedRect(true)
     , _trWidth(45)
+    , _pb()
 {
     //создание созависимых сперва
     _transects = new PathGenerator(_trWidth, m_sweepAngle, this);
@@ -549,6 +550,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
     std::sort(yLevelsOrientLines.begin(), yLevelsOrientLines.end());
 
     // ------------ решение для зон с U и D ----------------
+    // в resCells удлинённые ParallelSweepLиR до survPoly границ ячейки
     QPolygonF buff;
     for(int i = 0; i < copy.count(); ++i)
     {
@@ -567,83 +569,13 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         buff = sortPolygonClockwise(buff);
         resCells.append(buff);
     }
-    // ------------------------вспомогательная функция внесения двух крайних зон -------------------------------
-    auto lambdaLREdges = [this](double sweepAngle, double yMinPoly, double yMinHole,
-                                                                                    const QPolygonF& rotatedPolygon, QList<QPolygonF>& resCells, bool isLeftSide){
-        QPolygonF buff;
-        QLineF level, edge;
-        level = QLineF(QPointF(-10e5, yMinHole),
-                       QPointF(10e5, yMinHole));
-        QList<QPointF> intersections;
-        for (int j = 0; j < rotatedPolygon.size(); ++j) {
-            int k = (j + 1) % rotatedPolygon.size(); // следующий и замыкание
-            bool condition = isLeftSide ? (rotatedPolygon[j].y() >= yMinPoly && rotatedPolygon[j].y() < yMinHole) :
-                                          (rotatedPolygon[j].y() <= yMinPoly && rotatedPolygon[j].y() > yMinHole);
-            if(condition){
-                buff.append(rotatedPolygon[j]);
-            }
-            edge = QLineF(rotatedPolygon[j], rotatedPolygon[k]);
-            intersectionListFormimgRoutine(level, edge, intersections, QLineF::BoundedIntersection);
-        }
-        if (intersections.count() != 0)
-        {
-            buff.append(intersections[0]); buff.append(intersections[1]);
-        }
-        buff = rotationStruct<QPolygonF>(buff, -sweepAngle); // поворачиваем обратно точки декомпозиции
-        buff = sortPolygonClockwise(buff);
-        resCells.append(buff);
-    };
-    // две крайних боковых зоны
-    double yMinPoly, yMinHole;
-    yMinPoly = yLevels[0];
-    yMinHole = yLevelsOrientLines[0];
-    lambdaLREdges(sweepAngle, yMinPoly, yMinHole, rotatedPolygon, resCells, true);
-    // ------------ закончили один край ---------- приступили к другому ----------------
-    yMinHole = yLevels[yLevels.count()-1];
-    yMinPoly = yLevelsOrientLines[yLevelsOrientLines.count()-1];
-    lambdaLREdges(sweepAngle, yMinHole, yMinPoly, rotatedPolygon, resCells, false);
-    // ------------ в промежутках ----------------
-    // на практике Mannner biggerThanPoly rotation is clockwise может являться индикатором актуальности этой cell 0 - добавляем, 1 - скипаем
-    auto lambdaBetwenes = [] (const QList<QMap<OrientedLine, QLineF>>& copy,
-                                                                                          const QPolygonF& polygon,
-                                                                                          QList<QPolygonF>& resCells, bool isReverse){
-        QPolygonF buff;
-        QLineF edge;
-        QList<QPointF> intersections;
-        for(int i = 0; i < copy.count() - 1; ++i)
-        {
-            int k = i + 1;
-            if(isReverse)
-                k = std::exchange(i, k); // обратно все k -> i а i -> k для решения на 180
-            QLineF firstPar = copy[k][OrientedLine::ParallelSweepR];
-            QLineF secPar = copy[i][OrientedLine::ParallelSweepL]; // странно почему у i OrientedLine::ParallelSweepL у k OrientedLine::ParallelSweepR, а не наоборот [на подумать?]
-            QPolygonF biggerThanPoly;
-            biggerThanPoly  << copy[k][OrientedLine::ParallelSweepR].p1()
-                            << copy[i][OrientedLine::ParallelSweepL].p1()
-                            << copy[i][OrientedLine::ParallelSweepL].p2()
-                            << copy[k][OrientedLine::ParallelSweepR].p2();
-            //условие положительное ли направление движения между firstPar и secPar или отрицательное
-            if(isPolyInClockwiseMannerRot(biggerThanPoly.data(), biggerThanPoly.count()))
-                break;
-            for (int j = 0; j < polygon.size(); ++j) {
-                int w = (j + 1) % polygon.size(); // следующий и замыкание
-                edge = QLineF(polygon[j], polygon[w]);
-                if(biggerThanPoly.containsPoint(polygon[j], Qt::WindingFill)){ // containsPoint QPolygonF нужно усиливать для точек на краю
-                    buff.append(polygon[j]);
-                }
-                intersectionListFormimgRoutine(firstPar, edge, intersections, QLineF::BoundedIntersection);
-                intersectionListFormimgRoutine(secPar, edge, intersections, QLineF::BoundedIntersection);
-            }
-            for (const auto& currP: intersections)
-            {
-                buff.append(currP);
-            }
-//            buff = sortPolygonClockwise(buff);
-            resCells.append(biggerThanPoly);
-        }
-    };
-    lambdaBetwenes(copy, polygon, resCells, false);
-    lambdaBetwenes(copy, polygon, resCells, true);
+
+    // ------------------------ внесения крайних зон и в промежутках с использованием clipper -------------------------------
+    auto listEdgesCells = _pb.subtractedListWrp(m_orientedRect, resCells);
+    std::cout << "Size of listEdgesCells is " << listEdgesCells.count() << std::endl;
+    for(const auto& curr: listEdgesCells){
+        resCells.append(curr);
+    }
 
     mapOriendtedHoleRectLines = copy;
 

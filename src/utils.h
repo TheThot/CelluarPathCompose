@@ -196,9 +196,10 @@ namespace baseFunc {
             sumSq += squareHolesSection[i];
         }
         QPolygonF whole;
+        PolyBuilder pb = PolyBuilder();
         for(int i = 0; i < check2.count()-1; ++i) {
             if(i == 0)
-                whole = PolyOp::highPrecisionIntersected(check2[i], check2[i+1]);
+                whole = pb.snglIntersctnWrp(check2[i], check2[i+1]);
         }
         double squareWhole = polygonArea(whole);
 
