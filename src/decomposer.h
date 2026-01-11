@@ -84,6 +84,11 @@ public:
         }
     }
 
+
+    QList<QPolygonF> getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes, double angleDegrees);
+    QList<QPolygonF> performDecomposition(const QPolygonF& polygon, const QList<QPolygonF>& holes,
+                                                double sweepAngle);
+
 signals:
     void originalPolygonChanged();
     void decompositionCellsChanged();
@@ -115,13 +120,12 @@ private:
     // Алгоритмы декомпозиции
     std::vector<QPolygonF> trapezoidalDecomposition(const QPolygonF& polygon, double sweepAngle);
     QPolygonF getOrientedBoundingRect(const QPolygonF& polygon, QMap<OrientedLine, QLineF>& currOrient, double angleDegrees);
-    QList<QPolygonF> getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes, double angleDegrees);
-    QList<QPolygonF> boustrophedonDecomposition(const QPolygonF& polygon, const QList<QPolygonF>& holes,
-                                                const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
-                                                double sweepAngle);
     QList<QPolygonF> boustrophedonDecomposition_compact(const QPolygonF& polygon, const QList<QPolygonF>& holes,
                                                         QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
                                                         double sweepAngle);
+    QList<QPolygonF> boustrophedonDecomposition(const QPolygonF& polygon, const QList<QPolygonF>& holes,
+                                                const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
+                                                double sweepAngle);
     void upDownBorderFormingRoutineNewMannerReadyPoly(const QMap<OrientedLine, QLineF>& inMap,
                                                       const QPolygonF& hole,
                                                       QPolygonF& returnUp,
@@ -175,8 +179,9 @@ private:
         return result;
     }
 
+    void _debugPolyListToConsole(const QList<QPolygonF>& polygons);
+
     // Данные
-    uint64_t maxBoundSurvPolyRad = 0;
     QPolygonF m_originalPolygon;
     QVector<QPolygonF> m_decompositionCells;
     QList<QPolygonF> m_bpd_decompositionCells;

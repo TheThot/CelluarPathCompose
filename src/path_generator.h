@@ -25,6 +25,8 @@ public:
     PathGenerator(double inStep, double inAngle, QObject *parent);
     ~PathGenerator();
 
+    void changeHolesActiveState();
+
     QVariantList pathTraj() const;
     QVariantList pathConnection() const;
     QVariantList connPList() const;
@@ -37,6 +39,12 @@ public:
     void setPolyBoundary(const QPolygonF& in);
     void setDecomposeStruct(const holesInfoIn& in);
     void setPathSegments(const QList<QPolygonF> &in);
+
+    void setIsHoleActive(bool in);
+
+    QList<QLineF>           initNonRespectInnerHoles(const QPolygonF* inPoly);
+    QList<QList<QPointF>>   orientNonRespectPath(const QList<QLineF>& inPath);
+    QList<QList<QPointF>>   performRespectPathCnstr(const QList<QPolygonF>& dcmpsRes, const QList<QPolygonF>& holes);
 
 public slots:
 

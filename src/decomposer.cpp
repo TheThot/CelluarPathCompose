@@ -6,6 +6,7 @@
 #include <iostream>
 #include <ostream>
 #include <vector>
+#include <QDebug>
 
 using namespace baseFunc;
 
@@ -24,6 +25,7 @@ Decomposer::Decomposer(QObject *parent)
     });
     connect(this, &Decomposer::holesPolygonsChanged, this, [this] (){
         _transects->setPolyHolesList(m_holes);
+        _transects->changeHolesActiveState(); // TODO повесить на сигнал qml смены режима
     });
     
     //после определяем остальное
@@ -161,7 +163,7 @@ void Decomposer::updateDecomposition() {
     m_decompositionCells.clear();
     m_orientedRect.clear();
     m_orientedHoleRects.clear();
-    m_mapOriendtedHoleRectLines.clear();
+//    m_mapOriendtedHoleRectLines.clear();
     m_bpd_decompositionCells.clear();
     _holeData.holeBorderSegm.clear();
     _holeData.holeToBCD.clear();
@@ -175,13 +177,6 @@ void Decomposer::updateDecomposition() {
     // Вычисляем ориентированный ограничивающий прямоугольник
     QMap<OrientedLine, QLineF> buff = {};
     m_orientedRect = getOrientedBoundingRect(m_originalPolygon, buff, m_sweepAngle);
-    for(int i = 0; i < m_orientedRect.count(); ++i){
-        for(int j = 0; j < m_orientedRect.count(); ++j) {
-            uint64_t maxNumBuff = static_cast<uint64_t>(QLineF(m_orientedRect[i], m_orientedRect[j]).length());
-            if (maxBoundSurvPolyRad < maxNumBuff)
-                maxBoundSurvPolyRad = maxNumBuff * 2;
-        }
-    }
     m_orientedHoleRects = getOrientedBoundingHoleRects(m_originalPolygon, m_holes,m_sweepAngle);
 
     // Выполняем трапецоидальную декомпозицию
@@ -190,6 +185,11 @@ void Decomposer::updateDecomposition() {
 
     // Выполняем бустрофедон декомпозицию
     m_bpd_decompositionCells = boustrophedonDecomposition(m_originalPolygon, m_holes, m_mapOriendtedHoleRectLines, m_sweepAngle);
+
+    /*m_bpd_decompositionCells.append(m_orientedRect);
+    _debugPolyListToConsole(m_bpd_decompositionCells);
+    m_bpd_decompositionCells.pop_back();*/
+
     feedHolesInfoIn();
 
     _transects->setPolyBoundary(m_orientedRect);
@@ -647,6 +647,8 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
 
     mapOriendtedHoleRectLines = copy;
 
+//    std::cout << "Size of cell decmps is " << resCells.count() << std::endl;
+
     return resCells;
 }
 
@@ -786,7 +788,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
     // modify first 2 * holes.count cells of compact func resCell
     // сделаем чтобы все зоны строго были поделены для дальнейшего path cover
     auto check = _updateCellRule(&holes, &resCells);
-    // std::cout << "Rule is " << check << std::endl;
+//    std::cout << "Rule is " << check << std::endl;
 
     int h1, h2;
     QList<double> square;
@@ -916,7 +918,7 @@ void Decomposer::feedHolesInfoIn()
 
 QList<QPolygonF> Decomposer::getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes,
                                                           double angleDegrees) {
-//    m_mapOriendtedHoleRectLines.clear();
+    m_mapOriendtedHoleRectLines.clear();
     QList<QPolygonF> orientedRects;
 
     if (polygon.size() < 3) {
@@ -1116,4 +1118,42 @@ void Decomposer::setTransectWidth(double w) {
 
 double Decomposer::transectWidth() const {
     return _trWidth;
+}
+
+QList<QPolygonF>
+Decomposer::performDecomposition(const QPolygonF &polygon, const QList<QPolygonF> &holes, double sweepAngle) {
+//    m_mapOriendtedHoleRectLines.clear();
+    m_orientedRect.clear();
+    m_bpd_decompositionCells.clear();
+    QMap<OrientedLine, QLineF> buff = {};
+    m_orientedRect = getOrientedBoundingRect(polygon, buff, sweepAngle);
+    auto res = boustrophedonDecomposition(polygon,  holes, m_mapOriendtedHoleRectLines, sweepAngle);
+    /*res.append(m_orientedRect);
+    _debugPolyListToConsole(res);
+    res.pop_back();*/
+    return res;
+}
+
+void Decomposer::_debugPolyListToConsole(const QList<QPolygonF>& polygons) {
+    QDebug dbg = qDebug().nospace();
+    dbg << "=== Polygon List Debug ===\n";
+    dbg << "Total polygons: " << polygons.size() << "\n";
+
+    for (int i = 0; i < polygons.size(); ++i) {
+        const QPolygonF& poly = polygons[i];
+        dbg << "\nPolygon #" << i
+            << " (points: " << poly.size() << "):\n";
+
+        for (int j = 0; j < poly.size(); ++j) {
+            dbg << "  " << j << ": ("
+                << poly[j].x() << ", "
+                << poly[j].y() << ")\n";
+        }
+
+        // Дополнительная информация
+        if (!poly.isEmpty() && poly.isClosed()) {
+            dbg << "  Closed polygon";
+        }
+    }
+    dbg << "\n=========================\n";
 }

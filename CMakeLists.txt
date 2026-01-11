@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(TryCelluarPathCompose)
+project(decomposerLib)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_AUTOMOC ON)
@@ -25,15 +25,19 @@ find_package(Qt5 COMPONENTS Core Quick QuickControls2 REQUIRED)
 add_subdirectory(src)
 add_subdirectory(libs/a-star)
 
-add_executable(TryCelluarPathCompose main.cpp
+add_library(decomposerLib) # initialized below
+add_library(decomposerLib::decomposerLib ALIAS decomposerLib)
+
+add_executable(decomposerApp main.cpp
         ${Qt_RESOURCES})
 
 foreach (name ${Qt_RESOURCES})
     message(STATUS "${name}")
 endforeach ()
 
+target_link_libraries(decomposerApp PUBLIC decomposerLib)
 
-target_link_libraries(TryCelluarPathCompose
+target_link_libraries(decomposerLib
         PUBLIC
         Qt5::Core
         Qt5::Quick
