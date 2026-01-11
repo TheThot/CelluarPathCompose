@@ -14,6 +14,7 @@
 #include <QPair>
 #include <QPainterPath>
 #include <iostream>
+#include "PolyBuilder.h"
 
 struct holesInfoIn{
     QHash<const QPolygonF*, QPair<QList<QPointF>,QList<QPointF>>>  holeBorderSegm;
@@ -21,6 +22,22 @@ struct holesInfoIn{
 };
 
 namespace baseFunc {
+
+    // Вспомогательная функция для вычисления площади
+    static double polygonArea(const QPolygonF &poly) {
+        if (poly.size() < 3) return 0.0;
+
+        double area = 0.0;
+        int n = poly.size();
+
+        for (int i = 0; i < n; i++) {
+            int j = (i + 1) % n;
+            area += poly[i].x() * poly[j].y();
+            area -= poly[j].x() * poly[i].y();
+        }
+
+        return fabs(area) / 2.0;
+    }
 
     //проверка лежит ли точка на прямой
     static bool isPointOnLineF(const QPointF& p, const QLineF& line){
@@ -127,497 +144,6 @@ namespace baseFunc {
         return true;
     }
 
-    static bool segmentsIntersect(const QPointF &p1, const QPointF &p2,
-                                         const QPointF &q1, const QPointF &q2,
-                                         QPointF &intersection, double &t, double &u)
-    {
-        QPointF r = p2 - p1;
-        QPointF s = q2 - q1;
-        QPointF qp = q1 - p1;
-
-        auto crossProduct = [](const QPointF &p1, const QPointF &p2, const QPointF &p3)
-        {
-            return (p2.x() - p1.x()) * (p3.y() - p1.y()) -
-                   (p2.y() - p1.y()) * (p3.x() - p1.x());
-        };
-
-        double rxs = crossProduct(QPointF(0, 0), r, s);
-        double qpxr = crossProduct(QPointF(0, 0), qp, r);
-
-        if (fabs(rxs) < 1e-10) {
-            return false; // Коллинеарны или параллельны
-        }
-
-        t = crossProduct(QPointF(0, 0), qp, s) / rxs;
-        u = crossProduct(QPointF(0, 0), qp, r) / rxs;
-
-        if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-            intersection = p1 + r * t;
-            return true;
-        }
-
-        return false;
-    }
-
-    static QList<QPolygonF> subtractPolygonPrecise(const QPolygonF &subject, const QPolygonF &clip)
-    {
-        QList<QPolygonF> result;
-
-        if (subject.isEmpty()) return result;
-        if (clip.isEmpty()) {
-            result.append(subject);
-            return result;
-        }
-
-        // Создаем путь с операцией вычитания
-        QPainterPath subjectPath;
-        subjectPath.addPolygon(subject);
-
-        QPainterPath clipPath;
-        clipPath.addPolygon(clip);
-
-        QPainterPath subtractedPath = subjectPath.subtracted(clipPath);
-
-        // ОШИБКА 1: toFillPolygon() может возвращать пустой полигон
-        // Используем toSubpathPolygons() для получения всех подпутей
-        QList<QPolygonF> allPolygons = subtractedPath.toSubpathPolygons();
-
-        // ОШИБКА 2: Проверяем, есть ли что-то в результате
-        if (allPolygons.isEmpty()) {
-            // Если нет полигонов, возможно результат пустой
-            return result;
-        }
-
-        // ОШИБКА 3: Алгоритм разделения был слишком сложным и неправильным
-        // Упрощаем: возвращаем все полигоны из toSubpathPolygons()
-        for (const QPolygonF &poly : allPolygons) {
-            if (poly.size() >= 3) {
-                // Проверяем, замкнут ли полигон
-                QPolygonF closedPoly = poly;
-                if (closedPoly.first() != closedPoly.last()) {
-                    closedPoly.append(closedPoly.first());
-                }
-
-                // Проверяем площадь
-                double area = 0;
-                for (int i = 0; i < closedPoly.size(); i++) {
-                    int j = (i + 1) % closedPoly.size();
-                    area += closedPoly[i].x() * closedPoly[j].y();
-                    area -= closedPoly[j].x() * closedPoly[i].y();
-                }
-                area = fabs(area) / 2.0;
-
-                if (area > 1e-6) { // Минимальная площадь
-                    result.append(closedPoly);
-                }
-            }
-        }
-
-        // ОШИБКА 4: Если все еще пусто, возможно нужно альтернативное решение
-        if (result.isEmpty()) {
-            // Проверяем, может быть clip полностью внутри subject
-            bool allInside = true;
-            for (const QPointF &p : clip) {
-                if (!subject.containsPoint(p, Qt::OddEvenFill)) {
-                    allInside = false;
-                    break;
-                }
-            }
-
-            if (allInside) {
-                // Clip внутри subject - создаем полигон с дырой
-                QPainterPath pathWithHole;
-                pathWithHole.addPolygon(subject);
-                pathWithHole.addPolygon(clip);
-
-                QList<QPolygonF> holePolygons = pathWithHole.toSubpathPolygons();
-                for (const QPolygonF &poly : holePolygons) {
-                    if (poly.size() >= 3) {
-                        QPolygonF closedPoly = poly;
-                        if (closedPoly.first() != closedPoly.last()) {
-                            closedPoly.append(closedPoly.first());
-                        }
-                        result.append(closedPoly);
-                    }
-                }
-            } else {
-                // Возвращаем subject как есть
-                result.append(subject);
-            }
-        }
-
-        return result;
-    }
-
-    static QList<QPolygonF> simpleSubtracted(const QPolygonF &poly1, const QPolygonF &poly2)
-    {
-        // Создаем QPainterPath для обоих полигонов
-        QPainterPath path1;
-        path1.addPolygon(poly1);
-
-        QPainterPath path2;
-        path2.addPolygon(poly2);
-
-        // Вычитаем
-        QPainterPath subtracted = path1.subtracted(path2);
-
-        // Получаем все подконтуры
-        QList<QPolygonF> polygons;
-
-        // Проходим по всем элементам пути
-        for (int i = 0; i < subtracted.elementCount(); ) {
-            QPolygonF poly;
-
-            // Начинаем новый подконтур
-            const QPainterPath::Element &elem = subtracted.elementAt(i);
-            if (elem.type == QPainterPath::MoveToElement) {
-                poly << QPointF(elem.x, elem.y);
-                i++;
-
-                // Добавляем все последующие LineTo/CurveTo элементы
-                while (i < subtracted.elementCount()) {
-                    const QPainterPath::Element &nextElem = subtracted.elementAt(i);
-                    if (nextElem.type == QPainterPath::MoveToElement) {
-                        break;  // Начался новый подконтур
-                    }
-                    poly << QPointF(nextElem.x, nextElem.y);
-                    i++;
-                }
-
-                // Если полигон не пустой, добавляем его
-                if (poly.size() > 2) {
-                    // Проверяем, замкнут ли полигон
-                    if (poly.first() != poly.last()) {
-                        poly << poly.first();
-                    }
-                    polygons.append(poly);
-                }
-            } else {
-                i++;
-            }
-        }
-
-        return polygons;
-    }
-
-    static QPolygonF simpleUnited(const QPolygonF &poly1, const QPolygonF &poly2) {
-
-        // Создаем QPainterPath для обоих полигонов
-        QPainterPath path1;
-        path1.addPolygon(poly1);
-
-        QPainterPath path2;
-        path2.addPolygon(poly2);
-
-        // Объединяем
-        QPainterPath united = path1.united(path2);
-
-        // Используем toSubpathPolygons() для получения всех контуров
-        QList<QPolygonF> polygons = united.toSubpathPolygons();
-        QList<QPolygonF> result;
-
-        // Обрабатываем каждый полигон
-        for (QPolygonF poly : polygons) {
-            // Удаляем дубликаты точек
-            QPolygonF cleanPoly;
-            for (int i = 0; i < poly.size(); i++) {
-                if (i == 0 || QLineF(poly[i-1], poly[i]).length() > 0.001) {
-                    cleanPoly.append(poly[i]);
-                }
-            }
-
-            if (cleanPoly.size() >= 3) {
-                // Замыкаем полигон если нужно
-                if (cleanPoly.first() != cleanPoly.last()) {
-                    cleanPoly.append(cleanPoly.first());
-                }
-
-                // Вычисляем площадь для проверки корректности
-                double area = 0;
-                int n = cleanPoly.size();
-                for (int i = 0; i < n; i++) {
-                    int j = (i + 1) % n;
-                    area += cleanPoly[i].x() * cleanPoly[j].y();
-                    area -= cleanPoly[j].x() * cleanPoly[i].y();
-                }
-                area = fabs(area) / 2.0;
-
-                // Добавляем если площадь достаточна
-                if (area > 0.000001) {
-                    result.append(cleanPoly);
-                }
-            }
-        }
-
-        // Если результат пустой, но хотя бы один полигон был не пустой
-        if (result.isEmpty() ) {
-            // Возвращаем наибольший из полигонов
-            return QPolygonF();
-        }
-        return result[0];
-    }
-
-// Вспомогательная функция для вычисления площади
-    static double polygonArea(const QPolygonF &poly) {
-        if (poly.size() < 3) return 0.0;
-
-        double area = 0.0;
-        int n = poly.size();
-
-        for (int i = 0; i < n; i++) {
-            int j = (i + 1) % n;
-            area += poly[i].x() * poly[j].y();
-            area -= poly[j].x() * poly[i].y();
-        }
-
-        return fabs(area) / 2.0;
-    }
-
-
-// Упрощение полигона (удаление дубликатов и коллинеарных точек)
-    static QPolygonF simplifyPolygon(const QPolygonF &poly, double epsilon) {
-        if (poly.size() < 3) return poly;
-
-        QPolygonF result;
-        result.append(poly[0]);
-
-        for (int i = 1; i < poly.size(); i++) {
-            QPointF prev = result.last();
-            QPointF curr = poly[i];
-
-            // Проверяем расстояние
-            double dx = curr.x() - prev.x();
-            double dy = curr.y() - prev.y();
-            double dist = std::sqrt(dx * dx + dy * dy);
-
-            if (dist > epsilon) {
-                // Проверяем, не коллинеарна ли точка
-                if (result.size() >= 2) {
-                    QPointF prev2 = result[result.size() - 2];
-                    double area = std::abs(
-                            (prev2.x() - prev.x()) * (curr.y() - prev.y()) -
-                            (prev2.y() - prev.y()) * (curr.x() - prev.x())
-                    );
-
-                    if (area > epsilon * epsilon) {
-                        result.append(curr);
-                    } else {
-                        // Заменяем предыдущую точку
-                        result.last() = curr;
-                    }
-                } else {
-                    result.append(curr);
-                }
-            }
-        }
-
-        // Замыкаем если нужно
-        if (result.size() > 2) {
-            QPointF first = result.first();
-            QPointF last = result.last();
-
-            double dx = last.x() - first.x();
-            double dy = last.y() - first.y();
-            double dist = std::sqrt(dx * dx + dy * dy);
-
-            if (dist > epsilon) {
-                result.append(first);
-            }
-        }
-
-        return result;
-    }
-
-// "Раздутие" полигона (смещение границ наружу)
-    static QPolygonF inflatePolygon(const QPolygonF &poly, double amount) {
-        if (poly.size() < 3) return poly;
-
-        QPolygonF result;
-        int n = poly.size();
-
-        for (int i = 0; i < n; i++) {
-            QPointF prev = poly[(i - 1 + n) % n];
-            QPointF curr = poly[i];
-            QPointF next = poly[(i + 1) % n];
-
-            // Вычисляем нормали к ребрам
-            QPointF inEdge = curr - prev;
-            QPointF outEdge = next - curr;
-
-            // Нормализуем
-            double lenIn = std::sqrt(inEdge.x() * inEdge.x() + inEdge.y() * inEdge.y());
-            double lenOut = std::sqrt(outEdge.x() * outEdge.x() + outEdge.y() * outEdge.y());
-
-            if (lenIn > 0) inEdge /= lenIn;
-            if (lenOut > 0) outEdge /= lenOut;
-
-            // Поворачиваем на 90 градусов
-            QPointF normalIn(-inEdge.y(), inEdge.x());
-            QPointF normalOut(-outEdge.y(), outEdge.x());
-
-            // Усредняем нормали
-            QPointF normal((normalIn.x() + normalOut.x()) * 0.5,
-                           (normalIn.y() + normalOut.y()) * 0.5);
-
-            double len = std::sqrt(normal.x() * normal.x() + normal.y() * normal.y());
-            if (len > 0) normal /= len;
-
-            // Смещаем точку
-            result.append(curr + normal * amount);
-        }
-
-        return result;
-    }
-
-// Извлечение полигона из пути с обратным масштабированием
-    static QPolygonF extractPrecisePolygon(const QPainterPath &path) {
-        const double precisionScale = 100000.0;
-        const double epsilon = 1e-8;
-
-        // Пробуем несколько методов извлечения
-        QPolygonF result;
-
-        // Метод 1: Проход по элементам
-        QPolygonF fromElements;
-        for (int i = 0; i < path.elementCount(); i++) {
-            const QPainterPath::Element &elem = path.elementAt(i);
-            fromElements.append(QPointF(elem.x / precisionScale, elem.y / precisionScale));
-        }
-
-        // Метод 2: Используем toFillPolygon
-        QPolygonF fromFill = path.toFillPolygon();
-        for (QPointF &p : fromFill) {
-            p = QPointF(p.x() / precisionScale, p.y() / precisionScale);
-        }
-
-        // Выбираем лучший результат (с большей площадью)
-        double area1 = polygonArea(fromElements);
-        double area2 = polygonArea(fromFill);
-
-        result = (area1 > area2) ? fromElements : fromFill;
-
-        // Упрощаем результат
-        result = simplifyPolygon(result, epsilon);
-
-        return result;
-    }
-
-// Преобразование полигона в путь с повышенной точностью
-    static QPainterPath polygonToHighPrecisionPath(const QPolygonF &poly) {
-        QPainterPath path;
-        if (poly.isEmpty()) return path;
-
-        const double precisionScale = 100000.0; // Высокий масштаб для точности
-
-        path.moveTo(poly[0].x() * precisionScale, poly[0].y() * precisionScale);
-        for (int i = 1; i < poly.size(); i++) {
-            path.lineTo(poly[i].x() * precisionScale, poly[i].y() * precisionScale);
-        }
-        path.closeSubpath();
-
-        return path;
-    }
-
-// Проверка особых случаев (касания, вложенности)
-    static QPolygonF checkSpecialCases(const QPolygonF &poly1, const QPolygonF &poly2) {
-        const double epsilon = 1e-6;
-
-        // Проверяем, находится ли один полигон внутри другого
-        auto pointInPolygon = [](const QPointF &p, const QPolygonF &poly) -> bool {
-            int windingNumber = 0;
-            int n = poly.size();
-
-            for (int i = 0; i < n; i++) {
-                const QPointF &p1 = poly[i];
-                const QPointF &p2 = poly[(i + 1) % n];
-
-                if (p1.y() <= p.y()) {
-                    if (p2.y() > p.y()) {
-                        if ((p2.x() - p1.x()) * (p.y() - p1.y()) -
-                            (p.x() - p1.x()) * (p2.y() - p1.y()) > 0) {
-                            windingNumber++;
-                        }
-                    }
-                } else {
-                    if (p2.y() <= p.y()) {
-                        if ((p2.x() - p1.x()) * (p.y() - p1.y()) -
-                            (p.x() - p1.x()) * (p2.y() - p1.y()) < 0) {
-                            windingNumber--;
-                        }
-                    }
-                }
-            }
-
-            return windingNumber != 0;
-        };
-
-        // Проверяем центр полигона 1 в полигоне 2
-        QPointF center1 = poly1.boundingRect().center();
-        QPointF center2 = poly2.boundingRect().center();
-
-        if (pointInPolygon(center1, poly2)) {
-            // poly1 полностью внутри poly2
-            return poly1;
-        }
-
-        if (pointInPolygon(center2, poly1)) {
-            // poly2 полностью внутри poly1
-            return poly2;
-        }
-
-        // Проверяем касание границ
-        // Для этого создаем слегка "раздутые" полигоны
-        const double inflateAmount = 0.001;
-
-        QPolygonF inflated1 = inflatePolygon(poly1, inflateAmount);
-        QPolygonF inflated2 = inflatePolygon(poly2, inflateAmount);
-
-        QPainterPath path1, path2;
-        path1.addPolygon(inflated1);
-        path2.addPolygon(inflated2);
-
-        QPainterPath intersected = path1.intersected(path2);
-
-        if (!intersected.isEmpty()) {
-            QPolygonF result = intersected.toFillPolygon();
-            return simplifyPolygon(result, epsilon);
-        }
-
-        return QPolygonF();
-    }
-
-    static QPolygonF preciseIntersected(const QPolygonF &poly1, const QPolygonF &poly2) {
-        // Быстрые проверки
-        if (poly1.size() < 3 || poly2.size() < 3) return QPolygonF();
-
-        // Проверка bounding boxes
-        QRectF bbox1 = poly1.boundingRect();
-        QRectF bbox2 = poly2.boundingRect();
-        if (!bbox1.intersects(bbox2)) return QPolygonF();
-
-        // Создаем пути с повышенной точностью
-        QPainterPath path1 = polygonToHighPrecisionPath(poly1);
-        QPainterPath path2 = polygonToHighPrecisionPath(poly2);
-
-        // Вычисляем пересечение
-        QPainterPath intersected = path1.intersected(path2);
-
-        if (intersected.isEmpty()) {
-            // Проверяем особые случаи
-            return checkSpecialCases(poly1, poly2);
-        }
-
-        // Получаем полигон с обработкой ошибок
-        QPolygonF result = extractPrecisePolygon(intersected);
-
-        // Проверяем результат
-        if (result.size() < 3) {
-            return QPolygonF();
-        }
-
-        return result;
-    }
-
     static double lineEquationKoeff(const QPointF& p1, const QPointF& p2){
         double res;
         res = (p2.x() - p1.x()) / (p2.y() + p1.y());
@@ -672,11 +198,11 @@ namespace baseFunc {
         QPolygonF whole;
         for(int i = 0; i < check2.count()-1; ++i) {
             if(i == 0)
-                whole = preciseIntersected(check2[i], check2[i+1]);
+                whole = PolyOp::highPrecisionIntersected(check2[i], check2[i+1]);
         }
         double squareWhole = polygonArea(whole);
 
-        // std::cout << "utilz [updateCellRule] squareWhole is " << squareWhole << " sumSq is " << sumSq << " min is " << min << std::endl;
+//        std::cout << "utilz [updateCellRule] squareWhole is " << squareWhole << " sumSq is " << sumSq << " min is " << min << std::endl;
 
         rule = (squareWhole == 0) ? 0 : (std::abs(squareWhole - min) < 1e-1) ? 2 : 1; // squareWhole == min входит в 2
 
@@ -951,6 +477,7 @@ namespace baseFunc {
 
     static QLineF findLineBetweenLines(const QLineF& parall1, const QLineF& parall2, const QPointF& coord)
     {
+
         // Получаем нормальный единичный вектор
         QLineF normal = parall1.normalVector();
         QPointF unitNormal = normal.p2() - normal.p1();

@@ -22,6 +22,8 @@ set(Qt_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}/qresource.qrc")
 
 find_package(Qt5 COMPONENTS Core Quick QuickControls2 REQUIRED)
 
+find_package(Clipper2 CONFIG REQUIRED)
+
 add_subdirectory(src)
 add_subdirectory(libs/a-star)
 
@@ -42,6 +44,7 @@ target_link_libraries(decomposerLib
         Qt5::Core
         Qt5::Quick
         Qt5::QuickControls2
+        Clipper2::Clipper2
         PRIVATE
         src
         a-star
