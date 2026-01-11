@@ -532,7 +532,11 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
     }
 
     // ------------------------ внесения крайних зон и в промежутках с использованием clipper -------------------------------
-    auto listEdgesCells = _pb.subtractedListWrp(m_orientedRect, resCells);
+    QPolygonF whole;
+    for(const auto& curr: resCells){
+        whole = whole.united(curr);
+    }
+    auto listEdgesCells = _pb.subtractedListWrp(m_orientedRect, whole);
     std::cout << "Size of listEdgesCells is " << listEdgesCells.count() << std::endl;
     for(const auto& curr: listEdgesCells){
         resCells.append(curr);
