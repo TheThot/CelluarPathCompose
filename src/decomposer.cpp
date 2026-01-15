@@ -191,8 +191,6 @@ void Decomposer::updateDecomposition() {
     _debugPolyListToConsole(m_bpd_decompositionCells);
     m_bpd_decompositionCells.pop_back();*/
 
-    feedHolesInfoIn();
-
     _transects->setPolyBoundary(m_orientedRect);
     _transects->setDecomposeStruct(_holeData);
     _transects->setPathSegments(m_bpd_decompositionCells);
@@ -843,7 +841,7 @@ void Decomposer::createPolygonWithHoles() {
                       << QPointF(400, 400)
                       << QPointF(200, 400)
                       << QPointF(100, 250);
-    /*QPolygonF oneHole;
+    QPolygonF oneHole;
     oneHole << QPointF(180, 180)
             << QPointF(270, 180)
             << QPointF(300, 225)
@@ -852,16 +850,18 @@ void Decomposer::createPolygonWithHoles() {
             << QPointF(150, 225);
     m_holes.append(oneHole);
     QPolygonF secHole;
-    *//*secHole << QPointF(300, 350)
-            << QPointF(350, 350)
-            << QPointF(350, 300)
-            << QPointF(300, 300);*//*
-    secHole << QPointF(289.64, 325.00)
-            << QPointF(325.00, 360.36)
-            << QPointF(360.36, 325.00)
-            << QPointF(325.00, 289.64);
-    m_holes.append(secHole);*/
-    QPolygonF secHole;
+    secHole << QPointF(389.64, 425.00-200)
+            << QPointF(425.00, 460.36-200)
+            << QPointF(460.36, 425.00-200)
+            << QPointF(425.00, 389.64-200);
+    QPolygonF thirdHole;
+    thirdHole << QPointF(200, 400-50)
+              << QPointF(250, 400-50)
+              << QPointF(250, 350-50)
+              << QPointF(200, 350-50);
+    m_holes.append(secHole);
+    m_holes.append(thirdHole);
+    /*QPolygonF secHole;
     secHole << QPointF(289.64 - 100, 325.00 - 100)
             << QPointF(325.00 - 100, 360.36 - 100)
             << QPointF(360.36 - 100, 325.00 - 100)
@@ -874,7 +874,7 @@ void Decomposer::createPolygonWithHoles() {
             << QPointF(270 + 100, 270 + 100)
             << QPointF(180 + 100, 270 + 100)
             << QPointF(150 + 100, 225 + 100);
-    m_holes.append(oneHole);
+    m_holes.append(oneHole);*/
 }
 
 bool Decomposer::showPathCoverage() const {
