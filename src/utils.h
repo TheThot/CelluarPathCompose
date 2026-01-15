@@ -580,5 +580,51 @@ namespace baseFunc {
         return result;
     }
 
+
+    static bool polygonsAreEqualWithinDelta(const QPolygonF& poly1, const QPolygonF& poly2, double delta)
+    {
+        // Проверяем количество точек
+        if (poly1.size() != poly2.size()) {
+            return false;
+        }
+
+        // Проверяем каждую точку в пределах погрешности
+        for (int i = 0; i < poly1.size(); ++i) {
+            double dx = poly1[i].x() - poly2[i].x();
+            double dy = poly1[i].y() - poly2[i].y();
+            double distanceSquared = dx * dx + dy * dy;
+
+            if (distanceSquared > delta * delta) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    static QList<QPolygonF> removeDuplicatePolygons(QList<QPolygonF>& polygons, double delta = 10)
+    {
+        QList<QPolygonF> result;
+
+        for (int i = 0; i < polygons.size(); ++i) {
+            bool isDuplicate = false;
+
+            // Проверяем, есть ли уже такой полигон в результате
+            for (int j = 0; j < result.size(); ++j) {
+                if (polygonsAreEqualWithinDelta(polygons[i], result[j], delta)) {
+                    isDuplicate = true;
+                    break;
+                }
+            }
+
+            // Если не дубликат, добавляем в результат
+            if (!isDuplicate) {
+                result.append(polygons[i]);
+            }
+        }
+
+        return result;
+    }
+
 }
 #endif //TRYCELLUARPATHCOMPOSE_UTILS_H

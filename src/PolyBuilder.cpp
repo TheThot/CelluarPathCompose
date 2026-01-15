@@ -225,7 +225,7 @@ PathsD PolyBuilder::_union(const PathsD& workingClip){
     // Преобразуем PathsD в Paths64
     Paths64 clips64 = ScalePaths<int64_t, double>(workingClip, scale_factor, _error_code);
     // сначала добавляем + смещение чтобы секции не совпадали
-    auto offsetPolygons = _offsetPolygons(clips64, 1);
+    auto offsetPolygons = _offsetPolygons(clips64, 10);
     // Выполняем операцию объединения
     // Выполняем операцию объединения ВСЕХ полигонов как Subject
     Clipper64 clipper;
