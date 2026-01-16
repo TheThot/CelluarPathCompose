@@ -75,13 +75,18 @@ PathsD PolyBuilder::_substractS(const PathsD& workingClips){
     return ScalePaths<double, int64_t>(solution, 1.0 / scale_factor, _error_code);
 }
 
-PathsD PolyBuilder::_substract(const Path64& workingClip){
-    // сначала добавляем + смещение чтобы секции не совпадали
-    auto offsetPolygons = _offsetPolygon(workingClip, -5);
+PathsD PolyBuilder::_substract(const Path64& workingClip, bool doOffset){
+
     // Выполняем операцию вычитания
     Clipper64 clipper;
     clipper.AddSubject({working_precision});
-    clipper.AddClip({offsetPolygons});
+    if(doOffset) {
+        // сначала добавляем + смещение чтобы секции не совпадали
+        auto offsetPolygons = _offsetPolygon(workingClip, -5);
+        clipper.AddClip({offsetPolygons});
+    }
+    else
+        clipper.AddClip({workingClip});
 
     Paths64 solution;
     clipper.Execute(ClipType::Difference,
@@ -136,7 +141,7 @@ QList<QPolygonF> PolyBuilder::subtractedListWrp(const QPolygonF &poly1, const QL
     return res;
 }
 
-QList<QPolygonF> PolyBuilder::subtractedListWrp(const QPolygonF &poly1, const QPolygonF &poly2){
+QList<QPolygonF> PolyBuilder::subtractedListWrp(const QPolygonF &poly1, const QPolygonF &poly2, bool doOffset){
     QList<QPolygonF> res = {};
     if (poly1.isEmpty() || poly2.isEmpty()) {
         return res;
@@ -150,7 +155,7 @@ QList<QPolygonF> PolyBuilder::subtractedListWrp(const QPolygonF &poly1, const QP
 
     temp.setGeometry(clip);
 
-    auto resClipper = _substract(temp.getPrecise());
+    auto resClipper = _substract(temp.getPrecise(), doOffset);
 
     for (const auto &onePoly : resClipper) {
         QPolygonF temPoly;

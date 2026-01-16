@@ -156,8 +156,6 @@ private:
     QPointF rotatePoint(const QPointF& point, double angle);
     QPointF inverseRotatePoint(const QPointF& point, double angle);
     double computePolygonArea(const QPolygonF& polygon) const;
-    void feedHolesInfoIn();
-    void updateOrientedLine(QList<QMap<OrientedLine, QLineF>>& inMap);
     void _conditionRoutine(bool& containsPoint, bool& strickCondition, const QList<QPolygonF>& resCells, int idx1, const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines, int idx2);
 
     template< typename Type > QVariantList configListVariantLists(Type in_array) const{

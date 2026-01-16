@@ -46,7 +46,7 @@ public:
 
     QList<QPolygonF> subtractedListWrp(const QPolygonF &poly1, const QList<QPolygonF> &poly2);
 
-    QList<QPolygonF> subtractedListWrp(const QPolygonF &poly1, const QPolygonF &poly2);
+    QList<QPolygonF> subtractedListWrp(const QPolygonF &poly1, const QPolygonF &poly2, bool doOffset = true);
 
     QPolygonF snglIntersctnWrp(const QPolygonF &poly1, const QPolygonF &poly2);
 
@@ -56,7 +56,7 @@ private:
 
     PathsD _intersect(const Path64& workingClip);
 
-    PathsD _substract(const Path64& workingClip);
+    PathsD _substract(const Path64& workingClip, bool doOffset);
     PathsD _substractS(const PathsD& workingClip);
 
     Paths64 _offsetPolygon(const Path64& polygons, double delta);
