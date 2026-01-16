@@ -76,10 +76,12 @@ PathsD PolyBuilder::_substractS(const PathsD& workingClips){
 }
 
 PathsD PolyBuilder::_substract(const Path64& workingClip){
+    // сначала добавляем + смещение чтобы секции не совпадали
+    auto offsetPolygons = _offsetPolygon(workingClip, -5);
     // Выполняем операцию вычитания
     Clipper64 clipper;
     clipper.AddSubject({working_precision});
-    clipper.AddClip({workingClip});
+    clipper.AddClip({offsetPolygons});
 
     Paths64 solution;
     clipper.Execute(ClipType::Difference,
@@ -203,6 +205,21 @@ QPolygonF PolyBuilder::snglIntersctnWrp(const QPolygonF &poly1, const QPolygonF 
     }
 
     return res;
+}
+// Добавляем небольшое смещение к clip полигонам
+Paths64 PolyBuilder::_offsetPolygon(const Path64& polygons, double delta) {
+    Clipper2Lib::ClipperOffset offsetter;
+
+    // Настройки offset
+    Clipper2Lib::JoinType joinType = Clipper2Lib::JoinType::Square;
+    Clipper2Lib::EndType endType = Clipper2Lib::EndType::Polygon;
+
+    offsetter.AddPath(polygons, joinType, endType);
+
+    Paths64 solution;
+    offsetter.Execute(delta, solution);
+
+    return solution;
 }
 
 // Добавляем небольшое смещение к clip полигонам

@@ -590,84 +590,76 @@ void Decomposer::updateOrientedLine(QList<QMap<OrientedLine, QLineF>>& inMap){
     }
 }
 
+void calcANDCondition(bool& condIn, const QPolygonF& cell, const QPointF& p){
+    condIn = condIn && cell.containsPoint(p, Qt::OddEvenFill);
+}
+
+void calcORCondition(bool& condIn, const QPolygonF& cell, const QPointF& p){
+    condIn = condIn || cell.containsPoint(p, Qt::OddEvenFill);
+}
+
+void Decomposer::_conditionRoutine(bool& containsPoint, bool& strickCondition, const QList<QPolygonF>& resCells, int idx1, const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines, int idx2){
+    // ячейка idx1 содержит часть hole idx2
+    calcORCondition(containsPoint, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepD].p1());
+    calcORCondition(containsPoint, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepD].p2());
+    calcORCondition(containsPoint, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepU].p1());
+    calcORCondition(containsPoint, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepU].p2());
+    // ячейка idx1 полностью включает hole idx2
+    calcANDCondition(strickCondition, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepD].p1());
+    calcANDCondition(strickCondition, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepD].p2());
+    calcANDCondition(strickCondition, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepU].p1());
+    calcANDCondition(strickCondition, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepU].p2());
+}
+
 QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon, const QList<QPolygonF>& holes,
                                                         const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
                                                         double sweepAngle) {
     QList<QPolygonF> resCells{};
     QList<QMap<OrientedLine, QLineF>> copy = mapOriendtedHoleRectLines;
-//    std::cout << "Start boustrophedonDecomposition\n";
     resCells = boustrophedonDecomposition_compact(polygon, holes, copy, sweepAngle);
 
     // Автоматическое определение пересечений и обработка
-    QList<int> foundIarray;
+    int idxCellForHole1, idxCellForHole2;
+    for(int i = 0; i < holes.count(); ++i) // каждая holes анализир
+        for (int j = 0; j < holes.count(); ++j) // с другой holes
+            if(i != j)
+                // у каждой holes 2 cells в resCells = boustrophedonDecomposition_compact были посл положены в начале массива
+                for(int u = 0; u < 2; ++u){
+                    idxCellForHole1 = i * 2 + u;
+                    bool containsPoint = false;
+                    bool strickCondition = true;
+                    _conditionRoutine(containsPoint, strickCondition, resCells, idxCellForHole1, copy, j); // определяем степень включения hole в cell
+                    // Проверяем все угловые точки отверстия как в cell от hole(i) входит hole(j)
+                    if(strickCondition){
+                        resCells[j*2] =     _pb.snglIntersctnWrp(resCells[idxCellForHole1], resCells[j * 2]);
+                        resCells[j*2+1] =   _pb.snglIntersctnWrp(resCells[idxCellForHole1], resCells[j * 2 + 1]);
+                        QList<QPolygonF> whole;
+                        whole.append(resCells[j * 2]);
+                        whole.append(resCells[j * 2 + 1]);
+                        auto subtracted = _pb.subtractedListWrp(resCells[idxCellForHole1], whole);
+                        if (!subtracted.isEmpty()) {
+                            // Заменяем исходную ячейку результатом вычитания
+                            resCells[idxCellForHole1] = subtracted[0];
 
-    for (int j = 0; j < copy.count(); ++j) { // holes
-        QMap<int, QPolygonF> mappedProcRes; // сначала находим / после применяем
-        for (int i = 0; i < resCells.count(); ++i) { // cells
-            // Проверяем, что ячейка не принадлежит текущему отверстию
-            if (i != j * 2 && i != j * 2 + 1) {
-                bool containsPoint = false;
-                bool strickCondition = true;
-                bool temp;
-                // Проверяем все угловые точки отверстия
-                temp = resCells[i].containsPoint(copy[j][OrientedLine::PerpendiclSweepD].p1(), Qt::OddEvenFill);
-                containsPoint = containsPoint || temp;
-                strickCondition = strickCondition && temp;
-                temp = resCells[i].containsPoint(copy[j][OrientedLine::PerpendiclSweepD].p2(), Qt::OddEvenFill);
-                containsPoint = containsPoint || temp;
-                strickCondition = strickCondition && temp;
-                temp = resCells[i].containsPoint(copy[j][OrientedLine::PerpendiclSweepU].p1(), Qt::OddEvenFill);
-                containsPoint = containsPoint || temp;
-                strickCondition = strickCondition && temp;
-                temp = resCells[i].containsPoint(copy[j][OrientedLine::PerpendiclSweepU].p2(), Qt::OddEvenFill);
-                containsPoint = containsPoint || temp;
-                strickCondition = strickCondition && temp;
+                            for (int k = 1; k < subtracted.count(); ++k)
+                                resCells.append(subtracted[k]);
+                        }
+                    }
+                    else {
+                        for (int w = 0; w < 2; ++w) {
+                            idxCellForHole2 = j * 2 + w;
 
-                if (containsPoint) { // в ячейке i лежит j hole частично
-                    foundIarray.append(i); // cells
-
-                    // Вычисляем объединение U и D частей отверстия
-                    QList<QPolygonF> whole;
-                    whole.append(resCells[j * 2]);
-                    whole.append(resCells[j * 2 + 1]);
-                    whole = _pb.unitedListWrp(whole);
-
-                    // Вырезаем отверстие из ячейки
-                    auto subtracted = _pb.subtractedListWrp(resCells[i], whole);
-                    if (!subtracted.isEmpty()) {
-                        // Заменяем исходную ячейку результатом вычитания
-                        mappedProcRes[i] = subtracted[0];
-
-                        for (int k = 1; k < subtracted.count(); ++k)
-                            resCells.append(subtracted[k]);
+                            if (containsPoint) { // в ячейке i лежит j hole частично
+                                // Вырезаем отверстие из ячейки
+                                auto subtracted = _pb.subtractedListWrp(resCells[idxCellForHole1],
+                                                                        resCells[idxCellForHole2]);
+                                if (!subtracted.isEmpty())
+                                    // Заменяем исходную ячейку результатом вычитания
+                                    resCells[idxCellForHole1] = subtracted[0];
+                            }
+                        }
                     }
                 }
-                if(strickCondition){ // в ячейке i лежит вся j hole полностью допом скорректировать зоны j
-                    auto procCell1 = resCells[j*2];
-                    auto procCell2 = resCells[j*2+1];
-                    resCells[j*2] =     _pb.snglIntersctnWrp(procCell1, resCells[i]);
-                    resCells[j*2+1] =   _pb.snglIntersctnWrp(procCell2, resCells[i]);
-                    foundIarray.pop_back();
-                }
-            }
-        }
-        if(foundIarray.count() >= 2)
-            for(int i = 0; i < foundIarray.count() - 1; ++i){
-                resCells.append(_pb.snglIntersctnWrp(resCells[foundIarray[i]], resCells[foundIarray[i+1]]));
-            }
-        for(const auto& currMR: mappedProcRes.keys()){
-            resCells[currMR] = mappedProcRes[currMR];
-        }
-    }
-
-    // Удаляем пустые полигоны ?
-    /*QList<QPolygonF> filteredCells;
-    for (const auto& cell : resCells) {
-        if (!cell.isEmpty() && polygonArea(cell) > 1e-10) {
-            filteredCells.append(cell);
-        }
-    }*/
-//    std::cout << "End boustrophedonDecomposition\n";
 
     return resCells;
 }
@@ -684,13 +676,6 @@ void Decomposer::feedHolesInfoIn()
     }
     //остальные зоны без QPolygonF holes
     //их просто можно взять из m_bpd_decompositionCells начиная с индекса 2*m_holes.count()
-
-    //формируем holeBorderSegm
-    /*QPair<borderLine,borderLine> buff;
-    borderLine buffL;
-    for(int i = 0; i < m_holes.count(); ++i) {
-
-    }*/
 }
 
 QList<QPolygonF> Decomposer::getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes,

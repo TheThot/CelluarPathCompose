@@ -59,6 +59,7 @@ private:
     PathsD _substract(const Path64& workingClip);
     PathsD _substractS(const PathsD& workingClip);
 
+    Paths64 _offsetPolygon(const Path64& polygons, double delta);
     Paths64 _offsetPolygons(const Paths64& polygons, double delta);
     PathsD _union(const PathsD& workingClip);
 
