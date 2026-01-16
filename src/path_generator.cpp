@@ -134,8 +134,10 @@ void PathGenerator::pathUpdation()
         for (int i = 0; i < _bpd_decompositionCells->count(); ++i) {
             auto res = _pathSegmRelationToCell(_bpd_decompositionCells->at(i));
             QList<QList<QPointF>> resPointList = orientNonRespectPath(res);
-            if (!resPointList.isEmpty())
+            if (!resPointList.isEmpty()) {
+                resPointList = _improvePathRespectCell(resPointList, _bpd_decompositionCells->at(i));
                 _pathIntoCell[&_bpd_decompositionCells->at(i)] = resPointList;
+            }
 
             /*if(resPointList.count() != 0)
                 _pathRespectHoles += resPointList;*/
@@ -151,6 +153,40 @@ void PathGenerator::pathUpdation()
         _pathConnectionLines = _pathRouteConnections(_startEndPointsIntoCell);
 //        std::cout << "Connection count is " << _pathRespectHoles.size() << std::endl;
     }
+}
+
+QList<QList<QPointF>> PathGenerator::_improvePathRespectCell(const QList<QList<QPointF>>& resPointList, const QPolygonF& cell){
+    QList<QList<QPointF>> res{};
+    if(resPointList.isEmpty())
+        return res;
+
+    res = resPointList;
+
+    QList<QLineF> temp;
+    for(int i = 0; i < cell.count(); ++i){
+        temp.append(QLineF(cell[i], cell[(i+1)%cell.count()]));
+    }
+
+    for(int i = 0; i < resPointList.count() - 1; ++i){
+        QList<QPointF> intersections_list;
+        QList<QPointF> orderExtraPolyline;
+        auto currLineLast = resPointList[i].last();
+        auto nextLineFirst = resPointList[i+1].first();
+        auto lineCheck = QLineF(currLineLast, nextLineFirst);
+        for(const auto& linePoly: temp){
+            intersectionListFormimgRoutine(lineCheck, linePoly, intersections_list, QLineF::BoundedIntersection);
+        }
+        /*for(const auto& currP: resPointList)
+            res[i].append(currP);*/
+        if(intersections_list.count() > 1){
+            extraDangerPointsRoutine(temp, QLineF(intersections_list[0], intersections_list[1]), orderExtraPolyline);
+            if(!orderExtraPolyline.isEmpty())
+                for(const auto& currP: orderExtraPolyline)
+                    res[i].append(currP);
+        }
+    }
+
+    return res;
 }
 
 QList<QList<QPointF>> PathGenerator::_pathRouteConnections(const QVector<QPair<QPointF, QPointF>>& inConnections){
@@ -569,12 +605,6 @@ void PathGenerator::_adjustToLawnower_oneVectorCase(const Type &lineList, Type &
 QList<QList<QPointF>> PathGenerator::orientNonRespectPath(const QList<QLineF>& inPath){
     QList<QList<QPointF>> res1, res2;
 
-    /*if(inPath.count() < 1){
-        _startEndP.first = QPointF{-1e4, -1e4};
-        _startEndP.second = _startEndP.first;
-        return res1;
-    }*/
-
     for(const auto& currL:inPath){
         QList<QPointF> buffL;
         buffL   << currL.p1()
@@ -605,11 +635,6 @@ QList<QList<QPointF>> PathGenerator::orientNonRespectPath(const QList<QLineF>& i
         res2.append(buffL);
         reverse = !reverse;
     }
-
-    // формируем точку входа выхода
-    /*_startEndP.first    = res2[0][0];
-    const auto& lastRow =  res2[res2.count()-1];
-    _startEndP.second   = lastRow[lastRow.count()-1];*/
 
     return res2;
 }

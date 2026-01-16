@@ -63,6 +63,7 @@ private:
         HolesPathSeg = 1,
     };
 
+    QList<QList<QPointF>>   _improvePathRespectCell(const QList<QList<QPointF>>& resPointList, const QPolygonF& cell);
     QList<QLineF>           _pathSegmRelationToCell(const QPolygonF& inPoly);
     QList<QLineF>           _initNonRespectInnerHoles(const QPolygonF* inPoly);
     QVariantList             _oneLoopTraj(const QList<QList<QPointF>>& in) const;
