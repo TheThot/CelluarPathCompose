@@ -599,11 +599,11 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
     resCells = boustrophedonDecomposition_compact(polygon, holes, copy, sweepAngle);
 
     // Автоматическое определение пересечений и обработка
-    QList<int> foundIarray, foundJarray;
-    QMap<int, QPolygonF> mappedProcRes; // сначала находим / после применяем
+    QList<int> foundIarray;
 
-    for (int i = 0; i < resCells.count(); ++i) {
-        for (int j = 0; j < copy.count(); ++j) {
+    for (int j = 0; j < copy.count(); ++j) { // holes
+        QMap<int, QPolygonF> mappedProcRes; // сначала находим / после применяем
+        for (int i = 0; i < resCells.count(); ++i) { // cells
             // Проверяем, что ячейка не принадлежит текущему отверстию
             if (i != j * 2 && i != j * 2 + 1) {
                 bool containsPoint = false;
@@ -625,7 +625,6 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
 
                 if (containsPoint) { // в ячейке i лежит j hole частично
                     foundIarray.append(i); // cells
-                    foundJarray.append(j); // holes
 
                     // Вычисляем объединение U и D частей отверстия
                     QList<QPolygonF> whole;
@@ -649,31 +648,28 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
                     resCells[j*2] =     _pb.snglIntersctnWrp(procCell1, resCells[i]);
                     resCells[j*2+1] =   _pb.snglIntersctnWrp(procCell2, resCells[i]);
                     foundIarray.pop_back();
-                    foundJarray.pop_back();
                 }
-
             }
         }
-    }
-    if(foundIarray.count() >= 2)
-        for(int i = 0; i < foundIarray.count() - 1; ++i){
-            resCells.append(_pb.snglIntersctnWrp(resCells[foundIarray[i]], resCells[foundIarray[i+1]]));
+        if(foundIarray.count() >= 2)
+            for(int i = 0; i < foundIarray.count() - 1; ++i){
+                resCells.append(_pb.snglIntersctnWrp(resCells[foundIarray[i]], resCells[foundIarray[i+1]]));
+            }
+        for(const auto& currMR: mappedProcRes.keys()){
+            resCells[currMR] = mappedProcRes[currMR];
         }
-//    resCells = removeDuplicatePolygons(resCells);
-    for(const auto& currMR: mappedProcRes.keys()){
-        resCells[currMR] = mappedProcRes[currMR];
     }
 
     // Удаляем пустые полигоны ?
-    QList<QPolygonF> filteredCells;
+    /*QList<QPolygonF> filteredCells;
     for (const auto& cell : resCells) {
         if (!cell.isEmpty() && polygonArea(cell) > 1e-10) {
             filteredCells.append(cell);
         }
-    }
+    }*/
 //    std::cout << "End boustrophedonDecomposition\n";
 
-    return filteredCells;
+    return resCells;
 }
 
 void Decomposer::feedHolesInfoIn()
