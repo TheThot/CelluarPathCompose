@@ -6,8 +6,8 @@
 #include <QLineF>
 #include <PolyBuilder.h>
 
-const int PathFinderCalculator::_worldOffset{10};
-const double PathFinderCalculator::_scale{0.5};
+const int PathFinderCalculator::_worldOffset{50};
+const int PathFinderCalculator::_size = 200;
 
 PathFinderCalculator::PathFinderCalculator() {
     clear();
@@ -23,13 +23,6 @@ bool PathFinderCalculator::isEqual(const QPointF &a, const QPointF &b) {
 void PathFinderCalculator::init(const QList<QPolygonF> &obstacles) {
     clear();
     _obstacles2d = obstacles;
-}
-
-void PathFinderCalculator::init(const QList<QPolygonF> &obstacles, int wrldX, int wrldY) {
-    clear();
-    _obstacles2d = obstacles;
-    _wrldX = wrldX;
-    _wrldY = wrldY;
 }
 
 bool PathFinderCalculator::isPointInObstacle(const QPointF& point) const {
@@ -64,7 +57,7 @@ QPointF PathFinderCalculator::findNearestFreePoint(const QPointF& point) {
             );
 
             if (!isPointInObstacle(candidate)) {
-                qDebug() << "Исправлена точка из" << point << "в" << candidate;
+//                qDebug() << "Исправлена точка из" << point << "в" << candidate;
                 return candidate;
             }
         }
@@ -73,7 +66,7 @@ QPointF PathFinderCalculator::findNearestFreePoint(const QPointF& point) {
         radius *= 1.5;
     }
 
-    qWarning() << "Не удалось найти свободную точку рядом с" << point;
+//    qWarning() << "Не удалось найти свободную точку рядом с" << point;
     return point;  // Возвращаем оригинальную
 }
 
@@ -106,53 +99,30 @@ void PathFinderCalculator::clear() {
 }
 
 void PathFinderCalculator::initGenerator() {
-    _generator.setWorldSize(specifyVolume(_pathArea));
-    _generator.setHeuristic(AStar::Heuristic::octagonal);
+    _generator.setWorldSize({_size, _size});
+    _generator.setHeuristic(AStar::Heuristic::manhattan);
     _generator.setDiagonalMovement(true);
     _generator.allowMovementAlongBorders(true);
-}
-
-AStar::Vec2i PathFinderCalculator::specifyVolume(const QRectF& intoArea)
-{
-    //так как в алгоритме Astar числа веществ проводим масштабирование
-    int resX, resY;
-    resX = std::abs(intoArea.width()) + _worldOffset;
-    resY = std::abs(intoArea.height()) + _worldOffset;
-    resX *= _scale;
-    resY *= _scale;
-    return AStar::Vec2i{resX, resY};
-}
-
-void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, int &yWorld) {
-    xWorld = x  * _scale;
-    yWorld = y * _scale;
+    _generator.clearCollisions();
 }
 
 void PathFinderCalculator::getWorldCoordinate(double x, double y, int &xWorld, int &yWorld, const QRectF& iniArea) {
-    xWorld = x - iniArea.left();
-    yWorld =  y - iniArea.top();
-    xWorld *= _scale;
-    yWorld *= _scale;
+    xWorld = static_cast<int>((x - iniArea.left()) * _scale);
+    yWorld = static_cast<int>((y - iniArea.top()) * _scale);
+    xWorld = std::max(0, std::min(_size-1, xWorld));
+    yWorld = std::max(0, std::min(_size-1, yWorld));
 }
 
-
-QPointF PathFinderCalculator::backsideCoordConversion(int xWorld, int yWorld)
-{
-    return QPointF(xWorld / _scale, yWorld / _scale);
-}
 
 QPointF PathFinderCalculator::backsideCoordConversion(int xWorld, int yWorld, const QRectF& iniArea)
 {
-    return QPointF(xWorld / _scale + iniArea.left(),  yWorld / _scale + iniArea.top());
+    double x = xWorld / _scale + iniArea.left();
+    double y = yWorld / _scale + iniArea.top();
+    return QPointF(x, y);
 }
 
 void PathFinderCalculator::buildPath2d() {
-
-    const int WORLD_SIZE = 200;
-    _generator.setWorldSize({WORLD_SIZE, WORLD_SIZE});
-    _generator.setHeuristic(AStar::Heuristic::manhattan);
-    _generator.setDiagonalMovement(true);
-    _generator.clearCollisions();
+    initGenerator();
 
     // Находим bounding box всех объектов
     QRectF totalBounds;
@@ -164,65 +134,30 @@ void PathFinderCalculator::buildPath2d() {
     }
 
     // Добавляем margin
-    totalBounds.adjust(-50, -50, 50, 50);
+    totalBounds.adjust(-_worldOffset, -_worldOffset, _worldOffset, _worldOffset);
 
-    // Масштабируем в мир 1000x1000
-    double scaleX = WORLD_SIZE / totalBounds.width();
-    double scaleY = WORLD_SIZE / totalBounds.height();
-    double scale = std::min(scaleX, scaleY);
-
-    // Функции преобразования
-    auto toWorld = [&](const QPointF& p) -> AStar::Vec2i {
-        int x = static_cast<int>((p.x() - totalBounds.left()) * scale);
-        int y = static_cast<int>((p.y() - totalBounds.top()) * scale);
-        x = std::max(0, std::min(WORLD_SIZE-1, x));
-        y = std::max(0, std::min(WORLD_SIZE-1, y));
-        return {x, y};
-    };
-
-    auto fromWorld = [&](const AStar::Vec2i& p) -> QPointF {
-        double x = p.x / scale + totalBounds.left();
-        double y = p.y / scale + totalBounds.top();
-        return QPointF(x, y);
-    };
+    // Масштабируем
+    double scaleX = _size / totalBounds.width();
+    double scaleY = _size / totalBounds.height();
+    _scale = std::min(scaleX, scaleY);
 
     // Добавляем препятствия
-    for (const auto& obstacle : _obstacles2d) {
-        QRectF bounds = obstacle.boundingRect();
-
-        int minX, minY, maxX, maxY;
-        AStar::Vec2i tl = toWorld(bounds.topLeft());
-        AStar::Vec2i br = toWorld(bounds.bottomRight());
-
-        minX = std::min(tl.x, br.x);
-        maxX = std::max(tl.x, br.x);
-        minY = std::min(tl.y, br.y);
-        maxY = std::max(tl.y, br.y);
-
-        for (int x = minX; x <= maxX; x++) {
-            for (int y = minY; y <= maxY; y++) {
-                QPointF realPoint = fromWorld({x, y});
-                if (obstacle.containsPoint(realPoint, Qt::OddEvenFill)) {
-                    _generator.addCollision({x, y});
-                }
-            }
-        }
-    }
+    initCollisions(totalBounds);
 
     // Ищем путь
-    AStar::Vec2i start = toWorld(_pointFrom2d);
-    AStar::Vec2i end = toWorld(_pointTo2d);
+    AStar::Vec2i start, end;
+    getWorldCoordinate(_pointFrom2d.x(), _pointFrom2d.y(), start.x, start.y, totalBounds);
+    getWorldCoordinate(_pointTo2d.x(), _pointTo2d.y(), end.x, end.y, totalBounds);
 
     auto path = _generator.findPath(start, end);
 
     // Преобразуем обратно
     _path2d.clear();
     for (const auto& p : path) {
-        _path2d.append(fromWorld(p));
+        _path2d.append(backsideCoordConversion(p.x, p.y, totalBounds));
     }
 
 }
-
 
 QList<QPoint> PathFinderCalculator::bresenham_line(const QPoint& p0, const QPoint& p1){
     QList<QPoint> temp = {};
@@ -256,49 +191,29 @@ QList<QPoint> PathFinderCalculator::bresenham_line(const QPoint& p0, const QPoin
 }
 
 void PathFinderCalculator::initCollisions(const QRectF& area) {
-    QList<QPoint> temp = {};
-    int xWrld, yWrld;
-    for(const auto & obst: _obstacles2d){
-        for(int i = 0; i < obst.count(); ++i){
-            QLineF buff = QLineF(obst[i], obst[(i+1)%obst.count()]);
-            auto bl = bresenham_line(QPoint(buff.p1().x(), buff.p1().y()), QPoint(buff.p2().x(), buff.p2().y()));
-            for(const auto& res: bl){
-                if(area.contains(res)){
-                    getWorldCoordinate(res.x(), res.y(), xWrld, yWrld, area);
-                    QPoint resI = QPoint(xWrld, yWrld);
-                    if(!temp.contains(resI))
-                        temp.append(resI);
+    for (const auto& obstacle : _obstacles2d) {
+        QRectF bounds = obstacle.boundingRect();
+
+        int minX, minY, maxX, maxY;
+        AStar::Vec2i tl, br;
+        getWorldCoordinate(bounds.topLeft().x(), bounds.topLeft().y(), tl.x, tl.y, area);
+        getWorldCoordinate(bounds.bottomRight().x(), bounds.bottomRight().y(), br.x, br.y, area);
+
+        minX = std::min(tl.x, br.x);
+        maxX = std::max(tl.x, br.x);
+        minY = std::min(tl.y, br.y);
+        maxY = std::max(tl.y, br.y);
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                QPointF realPoint = backsideCoordConversion(x, y, area);
+                if (obstacle.containsPoint(realPoint, Qt::OddEvenFill)) {
+                    _generator.addCollision({x, y});
                 }
             }
         }
-        for(const auto& currP:temp){
-            _generator.addCollision({currP.x(), currP.y()});
-        }
     }
 }
-
-/*
-void PathFinderCalculator::initCollisions() {
-    QList<QPoint> temp = {};
-    int xWrld, yWrld;
-    for(const auto & obst: _obstacles2d){
-        for(int i = 0; i < obst.count(); ++i){
-            QLineF buff = QLineF(obst[i], obst[(i+1)%obst.count()]);
-            auto bl = bresenham_line(QPoint(buff.p1().x(), buff.p1().y()), QPoint(buff.p2().x(), buff.p2().y()));
-            for(const auto& res: bl){
-                getWorldCoordinate(res.x(), res.y(), xWrld, yWrld);
-                QPoint resI = QPoint(xWrld, yWrld);
-                if(!temp.contains(resI))
-                    temp.append(resI);
-            }
-        }
-        for(const auto& currP:temp){
-            int x = currP.x();
-            int y = currP.y();
-            _generator.addCollision({x, y});
-        }
-    }
-}*/
 
 void PathFinderCalculator::initCollisions() {
     // Очищаем старые препятствия
@@ -308,17 +223,17 @@ void PathFinderCalculator::initCollisions() {
 
     // Для каждого препятствия
     for (const auto& obstacle : _obstacles2d) {
-        // 1. Получаем bounding box препятствия в мировых координатах
+        // Получаем bounding box препятствия в мировых координатах
         QRectF obstacleBounds = obstacle.boundingRect();
 
-        // 2. Преобразуем в координаты AStar
+        // Преобразуем в координаты AStar
         int minX, minY, maxX, maxY;
         getWorldCoordinate(obstacleBounds.left(), obstacleBounds.top(),
                           minX, minY, _pathArea);
         getWorldCoordinate(obstacleBounds.right(), obstacleBounds.bottom(),
                           maxX, maxY, _pathArea);
 
-        // 3. Добавляем ВСЕ точки внутри bounding box, которые принадлежат препятствию
+        // Добавляем ВСЕ точки внутри bounding box, которые принадлежат препятствию
         for (int x = minX - offSet; x <= maxX + offSet; ++x) {
             for (int y = minY - offSet; y <= maxY + offSet; ++y) {
                 // Преобразуем обратно в реальные координаты для проверки
