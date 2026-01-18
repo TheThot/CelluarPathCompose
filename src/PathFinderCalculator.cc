@@ -92,7 +92,7 @@ void PathFinderCalculator::buildPath2d() {
 
     const int WORLD_SIZE = 200;
     _generator.setWorldSize({WORLD_SIZE, WORLD_SIZE});
-    _generator.setHeuristic(AStar::Heuristic::octagonal);
+    _generator.setHeuristic(AStar::Heuristic::manhattan);
     _generator.setDiagonalMovement(true);
     _generator.clearCollisions();
 
@@ -199,7 +199,6 @@ QList<QPoint> PathFinderCalculator::bresenham_line(const QPoint& p0, const QPoin
 
 void PathFinderCalculator::initCollisions(const QRectF& area) {
     QList<QPoint> temp = {};
-    double step = 1e-5;
     int xWrld, yWrld;
     for(const auto & obst: _obstacles2d){
         for(int i = 0; i < obst.count(); ++i){

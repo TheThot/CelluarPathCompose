@@ -151,7 +151,7 @@ namespace baseFunc {
     }
 
     //проверка на направление вращения полигона true - clockwise; false - counter-clockwise
-    static bool isPolyInClockwiseMannerRot(const QPointF* polygonPoints, uint size){
+    static bool isPolyInClockwiseMannerRot(const QPointF* polygonPoints, int size){
         if (size < 3) {
             // Для полигона нужно минимум 3 точки
             return false;
@@ -459,7 +459,6 @@ namespace baseFunc {
 
         // Вычисляем длину и угол линии
         qreal length = line.length();
-        qreal angle = line.angle() * M_PI / 180.0; // Конвертируем в радианы
 
         if (qFuzzyCompare(length, 0)) {
             // Если линия является точкой, возвращаем её без изменений

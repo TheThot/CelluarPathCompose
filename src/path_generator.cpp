@@ -271,8 +271,10 @@ QList<QList<QPointF>>  PathGenerator::performRespectPathCnstr(const QList<QPolyg
     for (int i = 0; i < dcmpsRes.count(); ++i) {
         auto segmRes = _pathSegmRelationToCell(dcmpsRes.at(i));
         QList<QList<QPointF>> resPointList = orientNonRespectPath(segmRes);
-        if (!resPointList.isEmpty())
+        if (!resPointList.isEmpty()) {
+            resPointList = _improvePathRespectCell(resPointList, dcmpsRes.at(i));
             _pathIntoCell[&dcmpsRes[i]] = resPointList;
+        }
     }
 
     if (_pathIntoCell.isEmpty()) {
@@ -325,6 +327,7 @@ QList<QList<QPointF>>  PathGenerator::performRespectPathCnstr(const QList<QPolyg
 
             pfc->perform(temp.p1(), temp.p2());
             connectionPath = pfc->getPath2d();
+            connectionPath = adaptiveSample(connectionPath, 40, 4);
         }
         configPathRes.append(connectionPath);
         res.append(configPathRes);
