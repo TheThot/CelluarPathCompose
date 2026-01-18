@@ -236,11 +236,11 @@ Paths64 PolyBuilder::_offsetPolygons(const Paths64& polygons, double delta) {
     return solution;
 }
 
-PathsD PolyBuilder::_union(const PathsD& workingClip){
+PathsD PolyBuilder::_union(const PathsD& workingClip, int offset){
     // Преобразуем PathsD в Paths64
     Paths64 clips64 = ScalePaths<int64_t, double>(workingClip, scale_factor, _error_code);
     // сначала добавляем + смещение чтобы секции не совпадали
-    auto offsetPolygons = _offsetPolygons(clips64, 10);
+    auto offsetPolygons = _offsetPolygons(clips64, offset);
     // Выполняем операцию объединения
     // Выполняем операцию объединения ВСЕХ полигонов как Subject
     Clipper64 clipper;
@@ -254,7 +254,7 @@ PathsD PolyBuilder::_union(const PathsD& workingClip){
     return ScalePaths<double, int64_t>(solution, 1.0 / scale_factor, _error_code);
 }
 
-QList<QPolygonF> PolyBuilder::unitedListWrp(const QList<QPolygonF> &poly2) {
+QList<QPolygonF> PolyBuilder::unitedListWrp(const QList<QPolygonF> &poly2, int offset) {
     auto res = QList<QPolygonF>();
 
     if (poly2.isEmpty()) {
@@ -274,7 +274,7 @@ QList<QPolygonF> PolyBuilder::unitedListWrp(const QList<QPolygonF> &poly2) {
     }
 
     // Используем новую функцию для вычитания многих полигонов
-    auto resClipper = _union(clip);
+    auto resClipper = _union(clip, offset);
 
 //    std::cout << "[poly_build] resClipper size " << resClipper.size() << std::endl;
 

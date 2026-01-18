@@ -129,7 +129,6 @@ void PathGenerator::pathUpdation()
 
     if(_holes != nullptr) {
 //        std::cout << "[PathGenerator] _bpd_decompositionCells count is " << _bpd_decompositionCells->count() << std::endl;
-        //pfc->init(*_holes);
         pfc->init(*_holes);
         for (int i = 0; i < _bpd_decompositionCells->count(); ++i) {
             auto res = _pathSegmRelationToCell(_bpd_decompositionCells->at(i));
@@ -138,9 +137,6 @@ void PathGenerator::pathUpdation()
                 resPointList = _improvePathRespectCell(resPointList, _bpd_decompositionCells->at(i));
                 _pathIntoCell[&_bpd_decompositionCells->at(i)] = resPointList;
             }
-
-            /*if(resPointList.count() != 0)
-                _pathRespectHoles += resPointList;*/
         }
         _configurePathIntoCell(order, _startEndPointsIntoCell);
         /*auto iter = _pathIntoCell.begin();
@@ -388,9 +384,11 @@ QHash<const QPolygonF*, QList<QList<QPointF>>> PathGenerator::_configurePathInto
         QPair<QPointF, QPointF> temp;
         auto currPath = _pathIntoCell[curr];
         QLineF first = QLineF(currPath.first().first(), currPath.first().last());
-        temp.first = first.pointAt(0.5);
+        temp.first = currPath.first().first();
+//        temp.first = first.pointAt(0.5);
         QLineF second = QLineF(currPath.last().first(), currPath.last().last());
-        temp.second = second.pointAt(0.5);
+        temp.second = currPath.last().last();
+//        temp.second = second.pointAt(0.5);
         flP.push_back(temp);
     }
     return res;

@@ -30,6 +30,8 @@ public:
         return working_precision;
     }
 
+    double getScale() { return scale_factor; }
+
     PathD process() {
         // Все вычисления на int64_t
         performClipperOperations(working_precision);
@@ -42,7 +44,7 @@ public:
 
     QPolygonF q_getResult();
 
-    QList<QPolygonF> unitedListWrp(const QList<QPolygonF> &poly2);
+    QList<QPolygonF> unitedListWrp(const QList<QPolygonF> &poly2, int offset = 10);
 
     QList<QPolygonF> subtractedListWrp(const QPolygonF &poly1, const QList<QPolygonF> &poly2);
 
@@ -61,7 +63,7 @@ private:
 
     Paths64 _offsetPolygon(const Path64& polygons, double delta);
     Paths64 _offsetPolygons(const Paths64& polygons, double delta);
-    PathsD _union(const PathsD& workingClip);
+    PathsD _union(const PathsD& workingClip, int offset);
 
     // Для хранения - double (максимальная точность)
     PathD storage_precision;

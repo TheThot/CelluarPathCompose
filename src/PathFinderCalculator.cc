@@ -4,6 +4,7 @@
 #include <iostream>
 #include <ostream>
 #include <QLineF>
+#include <PolyBuilder.h>
 
 const int PathFinderCalculator::_worldOffset{10};
 const double PathFinderCalculator::_scale{0.5};
@@ -31,11 +32,68 @@ void PathFinderCalculator::init(const QList<QPolygonF> &obstacles, int wrldX, in
     _wrldY = wrldY;
 }
 
+bool PathFinderCalculator::isPointInObstacle(const QPointF& point) const {
+    PolyBuilder pb = PolyBuilder();
+    for (const auto& obstacle : _obstacles2d) {
+        QList<QPolygonF> temp;
+        temp.push_back(obstacle);
+        temp = pb.unitedListWrp(temp, pb.getScale()*4);
+        if (temp[0].containsPoint(point, Qt::OddEvenFill)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+QPointF PathFinderCalculator::findNearestFreePoint(const QPointF& point) {
+    // Если точка внутри препятствия, ищем ближайшую свободную
+    if (!isPointInObstacle(point)) {
+        return point;  // Точка уже свободна
+    }
+
+    // Поиск в радиусе
+    double radius = 1.0;
+    const int maxAttempts = 100;
+
+    for (int attempt = 0; attempt < maxAttempts; ++attempt) {
+        // Проверяем точки по окружности
+        for (double angle = 0; angle < 2 * M_PI; angle += M_PI / 8) {
+            QPointF candidate(
+                    point.x() + radius * cos(angle),
+                    point.y() + radius * sin(angle)
+            );
+
+            if (!isPointInObstacle(candidate)) {
+                qDebug() << "Исправлена точка из" << point << "в" << candidate;
+                return candidate;
+            }
+        }
+
+        // Увеличиваем радиус для следующей попытки
+        radius *= 1.5;
+    }
+
+    qWarning() << "Не удалось найти свободную точку рядом с" << point;
+    return point;  // Возвращаем оригинальную
+}
+
+
 void PathFinderCalculator::perform(const QPointF &pointFrom, const QPointF &pointTo) {
     if (pointFrom.isNull() || pointTo.isNull())
         return;
     _pointFrom2d = pointFrom;
     _pointTo2d = pointTo;
+
+    // ПРОВЕРКА: не находятся ли точки внутри препятствий
+    if (isPointInObstacle(_pointFrom2d)) {
+        // Ищем ближайшую свободную точку
+        _pointFrom2d = findNearestFreePoint(_pointFrom2d);
+    }
+
+    if (isPointInObstacle(_pointTo2d)) {
+        _pointTo2d = findNearestFreePoint(_pointTo2d);
+    }
+
     buildPath2d();
 }
 

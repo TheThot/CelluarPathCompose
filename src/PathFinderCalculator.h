@@ -19,6 +19,10 @@ public:
 
     void perform(const QPointF &pointFrom, const QPointF &pointTo);
 
+    bool isPointInObstacle(const QPointF& point) const;
+
+    QPointF findNearestFreePoint(const QPointF& point);
+
     QList<QPointF> getPath2d();
 
 private:
