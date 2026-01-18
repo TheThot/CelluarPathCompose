@@ -534,7 +534,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
     }
     whole = _pb.unitedListWrp(resCells);
     auto listEdgesCells = _pb.subtractedListWrp(m_orientedRect, whole);
-    std::cout << "Size of listEdgesCells is " << listEdgesCells.count() << std::endl;
+//    std::cout << "Size of listEdgesCells is " << listEdgesCells.count() << std::endl;
     for(const auto& curr: listEdgesCells){
         resCells.append(curr);
     }

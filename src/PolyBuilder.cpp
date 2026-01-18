@@ -130,10 +130,6 @@ QList<QPolygonF> PolyBuilder::subtractedListWrp(const QPolygonF &poly1, const QL
         }
     }
 
-    if(res.count() == 1) {
-        std::cout << "Is it ok? [poly_build] substr one poly result\n";
-    }
-
     if (res.isEmpty()) {
         std::cout << "Warning [poly_build] substr result is zero poly\n";
     }
@@ -163,9 +159,6 @@ QList<QPolygonF> PolyBuilder::subtractedListWrp(const QPolygonF &poly1, const QP
             temPoly << QPointF(p.x, p.y);
         res.append(temPoly);
     }
-
-    if(res.count() == 1)
-        std::cout << "Is it ok? [poly_build] substr one poly result\n";
 
     if (res.isEmpty())
         std::cout << "Warning [poly_build] substr result is zero poly\n";
