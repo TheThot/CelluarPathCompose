@@ -30,7 +30,7 @@ public:
         return working_precision;
     }
 
-    double getScale() { return scale_factor; }
+    double getScale() const { return scale_factor; }
 
     PathD process() {
         // Все вычисления на int64_t
@@ -43,6 +43,8 @@ public:
     PathD q_convert(const QPolygonF& in);
 
     QPolygonF q_getResult();
+
+    QPolygonF offsetWrp(const QPolygonF &poly, int offset);
 
     QList<QPolygonF> unitedListWrp(const QList<QPolygonF> &poly2, int offset = 10);
 
@@ -57,6 +59,7 @@ public:
 private:
 
     PathsD _intersect(const Path64& workingClip);
+    bool _hasIntersectionBounds(const Path64& path1, const Path64& path2);
 
     PathsD _substract(const Path64& workingClip, bool doOffset);
     PathsD _substractS(const PathsD& workingClip);

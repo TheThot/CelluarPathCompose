@@ -6,7 +6,7 @@
 #include <QLineF>
 #include <PolyBuilder.h>
 
-const int PathFinderCalculator::_worldOffset{50};
+const int PathFinderCalculator::_worldOffset{2};
 const int PathFinderCalculator::_size = 200;
 
 PathFinderCalculator::PathFinderCalculator() {
@@ -102,7 +102,7 @@ void PathFinderCalculator::initGenerator() {
     _generator.setWorldSize({_size, _size});
     _generator.setHeuristic(AStar::Heuristic::manhattan);
     _generator.setDiagonalMovement(true);
-    _generator.allowMovementAlongBorders(true);
+    _generator.allowMovementAlongBorders(false);
     _generator.clearCollisions();
 }
 

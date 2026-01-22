@@ -86,8 +86,9 @@ public:
     }
 
 
+    void preprocPolys(QPolygonF& survPoly, QList<QPolygonF>& holes);
     QList<QPolygonF> getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes, double angleDegrees);
-    QList<QPolygonF> performDecomposition(const QPolygonF& polygon, const QList<QPolygonF>& holes,
+    QList<QPolygonF> performDecomposition(QPolygonF& polygon, QList<QPolygonF>& holes,
                                                 double sweepAngle);
 
 signals:
