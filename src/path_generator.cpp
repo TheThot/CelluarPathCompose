@@ -537,26 +537,6 @@ QVariantList PathGenerator::connPList() const{
     return list;
 }
 
-void PathGenerator::_orientLineOneDirection(const QList<QLineF>& lineList, QList<QLineF>& resultLines) {
-    qreal firstAngle = 0;
-    for (const auto& currLine : lineList) {
-        QLineF adjustedLine;
-
-        if (lineList.first() == currLine) {
-            firstAngle = currLine.angle();
-        }
-
-        if (qAbs(currLine.angle() - firstAngle) > 1.0) {
-            adjustedLine.setP1(currLine.p2());
-            adjustedLine.setP2(currLine.p1());
-        } else {
-            adjustedLine = currLine;
-        }
-
-        resultLines.append(adjustedLine);
-    }
-}
-
 template<typename Type>
 void PathGenerator::_orientLineOneDirection(const QList<Type>& lineList, QList<Type>& resultLines) {
     qreal firstAngle = 0;
@@ -584,23 +564,25 @@ void PathGenerator::_orientLineOneDirection(const QList<Type>& lineList, QList<T
     }
 }
 
-// обратный ход для вектора
-template<typename Type>
-void PathGenerator::_adjustToLawnower_oneVectorCase(const Type &lineList, Type &resultLines, bool &reverseVertices) {
+template<>
+void PathGenerator::_orientLineOneDirection(const QList<QLineF>& lineList, QList<QLineF>& resultLines) {
+    qreal firstAngle = 0;
+    for (const auto& currLine : lineList) {
+        QLineF adjustedLine;
 
-    Type transectVertices = lineList;
-    if (reverseVertices) {
-        reverseVertices = false;
-        Type reversedVertices;
-        for (int j = transectVertices.count() - 1; j >= 0; j--) {
-            reversedVertices += transectVertices[j];
+        if (lineList.first() == currLine) {
+            firstAngle = currLine.angle();
         }
-        transectVertices = reversedVertices;
-    } else {
-        reverseVertices = true;
-    }
-    resultLines = transectVertices;
 
+        if (qAbs(currLine.angle() - firstAngle) > 1.0) {
+            adjustedLine.setP1(currLine.p2());
+            adjustedLine.setP2(currLine.p1());
+        } else {
+            adjustedLine = currLine;
+        }
+
+        resultLines.append(adjustedLine);
+    }
 }
 
 QList<QList<QPointF>> PathGenerator::orientNonRespectPath(const QList<QLineF>& inPath){

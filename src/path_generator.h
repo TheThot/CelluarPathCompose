@@ -68,11 +68,11 @@ private:
     QList<QLineF>           _initNonRespectInnerHoles(const QPolygonF* inPoly);
     QVariantList             _oneLoopTraj(const QList<QList<QPointF>>& in) const;
     QList<QList<QPointF>>   _orientNonRespectPath(const QList<QLineF>& inPath);
-    void                    _orientLineOneDirection(const QList<QLineF>& lineList, QList<QLineF>& resultLines);
     template<typename Type>
     void                    _orientLineOneDirection(const QList<Type>& lineList, QList<Type>& resultLines);
-    template<typename Type>
-    void                    _adjustToLawnower_oneVectorCase(const Type &lineList, Type &resultLines, bool &reverseVertices);
+    template<>
+    void                    _orientLineOneDirection(const QList<QLineF>& lineList, QList<QLineF>& resultLines);
+
     QHash< const QPolygonF*,
     QList<QList<QPointF>> >  _pathRouteCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath);
     QHash< const QPolygonF*,
