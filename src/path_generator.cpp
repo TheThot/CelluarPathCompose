@@ -630,31 +630,6 @@ void PathGenerator::setPathSegments(const QList<QPolygonF> &in) {
     _bpd_decompositionCells = &in;
 }
 
-void PathGenerator::setDecomposeStruct(const holesInfoIn &in) {
-    _decompose = &in;
-//    _debugPrintHolesInfo(in);
-}
-
-void PathGenerator::_debugPrintHolesInfo(const holesInfoIn& info) {
-    qDebug() << "=== holesInfoIn ===";
-
-    qDebug() << "holeBorderSegm:" << info.holeBorderSegm.size() << "entries";
-    int i = 1;
-    for (auto it = info.holeBorderSegm.constBegin(); it != info.holeBorderSegm.constEnd(); ++it, ++i) {
-        qDebug() << "  Hole" << i << "key:" << it.key();
-        qDebug() << "    Segment 1:" << it.value().first;
-        qDebug() << "    Segment 2:" << it.value().second;
-    }
-
-    qDebug() << "\nholeToBCD:" << info.holeToBCD.size() << "entries";
-    i = 1;
-    for (auto it = info.holeToBCD.constBegin(); it != info.holeToBCD.constEnd(); ++it, ++i) {
-        qDebug() << "  Hole" << i << "key:" << it.key();
-        qDebug() << "    BCD1:" << it.value().first;
-        qDebug() << "    BCD2:" << it.value().second;
-    }
-}
-
 QVariantList PathGenerator::pathConnection() const {
     QVariantList list;
 

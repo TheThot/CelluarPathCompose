@@ -166,8 +166,6 @@ void Decomposer::updateDecomposition() {
     m_orientedHoleRects.clear();
 //    m_mapOriendtedHoleRectLines.clear();
     m_bpd_decompositionCells.clear();
-    _holeData.holeBorderSegm.clear();
-    _holeData.holeToBCD.clear();
 
     if (m_originalPolygon.size() < 3) {
         emit decompositionCellsChanged();
@@ -195,7 +193,6 @@ void Decomposer::updateDecomposition() {
     m_bpd_decompositionCells.pop_back();*/
 
     _transects->setPolyBoundary(m_orientedRect);
-    _transects->setDecomposeStruct(_holeData);
     _transects->setPathSegments(m_bpd_decompositionCells);
     _transects->pathUpdation();
 
@@ -543,7 +540,6 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
 
     for(int i = 0; i < mapOriendtedHoleRectLines.count(); ++i) //распаковываем по одной штук на каждую hole
     {
-        QPair<QList<QPointF>,QList<QPointF>> buffP;
         // Организация данных в новую структуру схожую с mapOriendtedHoleRectLines
         // 0. Preprocessing получаем линии Parallel L и R длинные до пересечений boundedRect SurvPoly
         newParallFormingRoutine(mapOriendtedHoleRectLines[i], copySurvPolyBound,
@@ -563,9 +559,6 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
                                                     readyPolyDown[i],
                                                     holeBorderUp[i],
                                                     holeBorderDown[i]);
-        buffP.first = holeBorderUp[i];
-        buffP.second = holeBorderDown[i];
-        _holeData.holeBorderSegm[&m_holes[i]] = buffP;
         // 2. В compact реализации 2 и 3 пункт пропускаем
     }
     // поворачиваем полигон SurvPoly

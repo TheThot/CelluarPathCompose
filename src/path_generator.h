@@ -37,7 +37,7 @@ public:
     void setPolyHolesList(const QList<QPolygonF>& in);
     void setSurvPoly(const QPolygonF& in);
     void setPolyBoundary(const QPolygonF& in);
-    void setDecomposeStruct(const holesInfoIn& in);
+
     void setPathSegments(const QList<QPolygonF> &in);
 
     void setIsHoleActive(bool in);
@@ -79,8 +79,6 @@ private:
     QList<QList<QPointF>> > _configurePathIntoCell(QVector< const QPolygonF* >& order, QVector< QPair<QPointF, QPointF> >& flP);
     QList<QList<QPointF>>   _pathRouteConnections(const QVector<QPair<QPointF, QPointF>>& inPath);
 
-    // Debug utilz
-    void _debugPrintHolesInfo(const holesInfoIn& info);
     void _qDebugPrintPathRespectHoles(const QList<QList<QPair<QPointF, int>>>& pathData);
     void _qDebugPrintPath(const QList<QList<QPointF>>& pathData);
 
@@ -102,7 +100,6 @@ private:
     const QPolygonF*            _survPolygon = nullptr;
     const QPolygonF*            _polyBoundary = nullptr;
     // два указателя на переменные хранящие информацию по ячейкам cells
-    const holesInfoIn*          _decompose = nullptr;
     const QList<QPolygonF>*     _bpd_decompositionCells = nullptr;
 
     PathFinderCalculator *pfc;

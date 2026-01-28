@@ -16,11 +16,6 @@
 #include <iostream>
 #include "PolyBuilder.h"
 
-struct holesInfoIn{
-    QHash<const QPolygonF*, QPair<QList<QPointF>,QList<QPointF>>>  holeBorderSegm;
-    QHash<const QPolygonF*, QPair<QPolygonF*,QPolygonF*>>          holeToBCD;  // BCD levels только для holes
-};
-
 namespace baseFunc {
 
     // Вспомогательная функция для вычисления площади

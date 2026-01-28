@@ -194,7 +194,6 @@ private:
     PathGenerator* _transects;
     bool            _isPathShow;
     double          _trWidth;
-    holesInfoIn     _holeData;
 
     // Предопределенные полигоны
     void createDefaultPolygon();
