@@ -612,27 +612,6 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
     return resCells;
 }
 
-void calcANDCondition(bool& condIn, const QPolygonF& cell, const QPointF& p){
-    condIn = condIn && cell.containsPoint(p, Qt::OddEvenFill);
-}
-
-void calcORCondition(bool& condIn, const QPolygonF& cell, const QPointF& p){
-    condIn = condIn || cell.containsPoint(p, Qt::OddEvenFill);
-}
-
-void Decomposer::_conditionRoutine(bool& containsPoint, bool& strickCondition, const QList<QPolygonF>& resCells, int idx1, const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines, int idx2){
-    // ячейка idx1 содержит часть hole idx2
-    calcORCondition(containsPoint, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepD].p1());
-    calcORCondition(containsPoint, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepD].p2());
-    calcORCondition(containsPoint, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepU].p1());
-    calcORCondition(containsPoint, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepU].p2());
-    // ячейка idx1 полностью включает hole idx2
-    calcANDCondition(strickCondition, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepD].p1());
-    calcANDCondition(strickCondition, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepD].p2());
-    calcANDCondition(strickCondition, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepU].p1());
-    calcANDCondition(strickCondition, resCells[idx1], mapOriendtedHoleRectLines[idx2][OrientedLine::PerpendiclSweepU].p2());
-}
-
 QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon, const QList<QPolygonF>& holes,
                                                         const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
                                                         double sweepAngle) {
@@ -648,36 +627,20 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
                 // у каждой holes 2 cells в resCells = boustrophedonDecomposition_compact были посл положены в начале массива
                 for(int u = 0; u < 2; ++u){
                     idxCellForHole1 = i * 2 + u;
-                    bool containsPoint = false;
-                    bool strickCondition = true;
-                    _conditionRoutine(containsPoint, strickCondition, resCells, idxCellForHole1, copy, j); // определяем степень включения hole в cell
+                    auto holecell = _pb.snglIntersctnWrp(resCells[idxCellForHole1], holes[j]);
                     // Проверяем все угловые точки отверстия как в cell от hole(i) входит hole(j)
-                    if(strickCondition){
-                        resCells[j*2] =     _pb.snglIntersctnWrp(resCells[idxCellForHole1], resCells[j * 2]);
-                        resCells[j*2+1] =   _pb.snglIntersctnWrp(resCells[idxCellForHole1], resCells[j * 2 + 1]);
-                        QList<QPolygonF> whole;
-                        whole.append(resCells[j * 2]);
-                        whole.append(resCells[j * 2 + 1]);
-                        auto subtracted = _pb.subtractedListWrp(resCells[idxCellForHole1], whole);
-                        if (!subtracted.isEmpty()) {
-                            // Заменяем исходную ячейку результатом вычитания
-                            resCells[idxCellForHole1] = subtracted[0];
+                    for (int w = 0; w < 2; ++w) {
+                        idxCellForHole2 = j * 2 + w;
+                        if(polygonArea(holecell) != 0) {
+                            // Вырезаем отверстие из ячейки
+                            auto subtracted = _pb.subtractedListWrp(resCells[idxCellForHole1],
+                                                                    resCells[idxCellForHole2]);
+                            if (!subtracted.isEmpty()) {
+                                // Заменяем исходную ячейку результатом вычитания
+                                resCells[idxCellForHole1] = subtracted[0];
 
-                            for (int k = 1; k < subtracted.count(); ++k)
-                                resCells.append(subtracted[k]);
-                        }
-                    }
-                    else {
-                        for (int w = 0; w < 2; ++w) {
-                            idxCellForHole2 = j * 2 + w;
-
-                            if (containsPoint) { // в ячейке i лежит j hole частично
-                                // Вырезаем отверстие из ячейки
-                                auto subtracted = _pb.subtractedListWrp(resCells[idxCellForHole1],
-                                                                        resCells[idxCellForHole2]);
-                                if (!subtracted.isEmpty())
-                                    // Заменяем исходную ячейку результатом вычитания
-                                    resCells[idxCellForHole1] = subtracted[0];
+                                for (int k = 1; k < subtracted.count(); ++k)
+                                    resCells.append(subtracted[k]);
                             }
                         }
                     }

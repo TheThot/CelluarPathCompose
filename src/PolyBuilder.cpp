@@ -87,7 +87,7 @@ PathsD PolyBuilder::_intersect(const Path64& workingClip){
 
     Paths64 solution;
     clipper.Execute(ClipType::Intersection,
-                    FillRule::NonZero,
+                    FillRule::EvenOdd,
                     solution);
 
     return ScalePaths<double, int64_t>(solution, 1.0 / scale_factor, _error_code);
@@ -98,7 +98,7 @@ PathsD PolyBuilder::_substractS(const PathsD& workingClips){
     Paths64 clips64 = ScalePaths<int64_t, double>(workingClips, scale_factor, _error_code);
 
     // сначала добавляем + смещение чтобы секции не совпадали
-    auto offsetPolygons = _offsetPolygons(clips64, 1);
+    auto offsetPolygons = _offsetPolygons(clips64, 100);
 
     // Выполняем операцию вычитания
     Clipper64 clipper;
@@ -121,7 +121,7 @@ PathsD PolyBuilder::_substract(const Path64& workingClip, bool doOffset){
     clipper.AddSubject({working_precision});
     if(doOffset) {
         // сначала добавляем + смещение чтобы секции не совпадали
-        auto offsetPolygons = _offsetPolygon(workingClip, -5);
+        auto offsetPolygons = _offsetPolygon(workingClip, 100);
         clipper.AddClip({offsetPolygons});
     }
     else
@@ -303,7 +303,7 @@ PathsD PolyBuilder::_union(const PathsD& workingClip, int offset){
 
     Paths64 solution;
     clipper.Execute(ClipType::Union,
-                    FillRule::NonZero,
+                    FillRule::EvenOdd,
                     solution);
 
     return ScalePaths<double, int64_t>(solution, 1.0 / scale_factor, _error_code);
