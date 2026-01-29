@@ -70,8 +70,7 @@ private:
     QList<QList<QPointF>>   _orientNonRespectPath(const QList<QLineF>& inPath);
     template<typename Type>
     void                    _orientLineOneDirection(const QList<Type>& lineList, QList<Type>& resultLines);
-    template<>
-    void                    _orientLineOneDirection(const QList<QLineF>& lineList, QList<QLineF>& resultLines);
+
 
     QHash< const QPolygonF*,
     QList<QList<QPointF>> >  _pathRouteCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath);
@@ -105,4 +104,24 @@ private:
     PathFinderCalculator *pfc;
 };
 
+template<>
+inline void PathGenerator::_orientLineOneDirection<QLineF>(const QList<QLineF>& lineList, QList<QLineF>& resultLines){
+    qreal firstAngle = 0;
+    for (const auto& currLine : lineList) {
+        QLineF adjustedLine;
+
+        if (lineList.first() == currLine) {
+            firstAngle = currLine.angle();
+        }
+
+        if (qAbs(currLine.angle() - firstAngle) > 1.0) {
+            adjustedLine.setP1(currLine.p2());
+            adjustedLine.setP2(currLine.p1());
+        } else {
+            adjustedLine = currLine;
+        }
+
+        resultLines.append(adjustedLine);
+    }
+}
 #endif //TRYCELLUARPATHCOMPOSE_PATH_GENERATOR_H

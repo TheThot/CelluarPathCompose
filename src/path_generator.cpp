@@ -564,27 +564,6 @@ void PathGenerator::_orientLineOneDirection(const QList<Type>& lineList, QList<T
     }
 }
 
-template<>
-void PathGenerator::_orientLineOneDirection(const QList<QLineF>& lineList, QList<QLineF>& resultLines) {
-    qreal firstAngle = 0;
-    for (const auto& currLine : lineList) {
-        QLineF adjustedLine;
-
-        if (lineList.first() == currLine) {
-            firstAngle = currLine.angle();
-        }
-
-        if (qAbs(currLine.angle() - firstAngle) > 1.0) {
-            adjustedLine.setP1(currLine.p2());
-            adjustedLine.setP2(currLine.p1());
-        } else {
-            adjustedLine = currLine;
-        }
-
-        resultLines.append(adjustedLine);
-    }
-}
-
 QList<QList<QPointF>> PathGenerator::orientNonRespectPath(const QList<QLineF>& inPath){
     QList<QList<QPointF>> res1, res2;
 
