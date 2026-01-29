@@ -34,7 +34,6 @@ public:
 
     // Основные свойства
     double      transectWidth() const;
-    bool         showPathCoverage() const;
     PathGenerator* transects() const;
     QVariantList holes_2Darray() const;
     QVariantList originalPolygon() const;
@@ -45,6 +44,7 @@ public:
     double sweepAngle() const;
     bool showDecomposition() const;
     bool showOrientedRect() const;
+    bool showPathCoverage() const;
     QVariantList test_2Darray() const {
         QVariantList result;
 
@@ -92,18 +92,21 @@ public:
                                                 double sweepAngle);
 
 signals:
+    void updateCanvas();
     void originalPolygonChanged();
     void decompositionCellsChanged();
+    void showDecompositionChanged();
     void orientedRectChanged();
     void sweepAngleChanged();
-    void showDecompositionChanged();
     void showOrientedRectChanged();
+    void trWdthChanged();
+
     void holesPolygonsChanged();
     void orientedHoleRectsChanged();
     void showPathCoverageChanged();
-    void trWdthChanged();
 
 private:
+    void _init();
     enum class OrientPointNames
     {
         LeftBottom = 0,     // [0] - лев ниж

@@ -88,12 +88,6 @@ Window {
 
     Connections {
         target: decomposer
-        function onDecompositionCellsChanged() { canvas.requestPaint() }
-        function onOrientedRectChanged() { canvas.requestPaint() }
-        function onOriginalPolygonChanged() { canvas.requestPaint() }
-        function onSweepAngleChanged() { canvas.requestPaint() }
-        function onShowDecompositionChanged() { canvas.requestPaint() }
-        function onShowOrientedRectChanged() { canvas.requestPaint() }
-        function ontrWdthChanged() { canvas.requestPaint() }
+        function onUpdateCanvas() { canvas.requestPaint() }
     }
 }

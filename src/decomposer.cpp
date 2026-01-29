@@ -15,9 +15,11 @@ Decomposer::Decomposer(QObject *parent)
     , m_sweepAngle(0.0)
     , m_showDecomposition(true)
     , m_showOrientedRect(true)
+    , _isPathShow(false)
     , _trWidth(45)
     , _pb()
 {
+    _init();
     //создание созависимых сперва
     _transects = new PathGenerator(_trWidth, m_sweepAngle, this);
 //    connect(this, &Decomposer::sweepAngleChanged, _transects, &PathGenerator::pathUpdation);
@@ -33,7 +35,17 @@ Decomposer::Decomposer(QObject *parent)
 //    createDefaultPolygon();
     createPolygonWithHoles();
     updateDecomposition();
+}
 
+void Decomposer::_init(){
+    connect(this , &Decomposer::originalPolygonChanged,     this, &Decomposer::updateCanvas);
+    connect(this , &Decomposer::decompositionCellsChanged,  this, &Decomposer::updateCanvas);
+    connect(this , &Decomposer::orientedRectChanged,        this, &Decomposer::updateCanvas);
+    connect(this , &Decomposer::showDecompositionChanged,   this, &Decomposer::updateCanvas);
+    connect(this , &Decomposer::showOrientedRectChanged,    this, &Decomposer::updateCanvas);
+    connect(this , &Decomposer::sweepAngleChanged,          this, &Decomposer::updateCanvas);
+    connect(this , &Decomposer::trWdthChanged,              this, &Decomposer::updateCanvas);
+    connect(this , &Decomposer::showPathCoverageChanged,    this, &Decomposer::updateCanvas);
 }
 
 PathGenerator* Decomposer::transects() const{
@@ -866,6 +878,7 @@ void Decomposer::createPolygonWithHoles() {
     m_holes.append(oneHole);
     m_holes.append(secHole);
     m_holes.append(thirdHole);*/
+    emit originalPolygonChanged();
 }
 
 bool Decomposer::showPathCoverage() const {

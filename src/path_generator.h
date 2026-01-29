@@ -81,7 +81,7 @@ private:
     void _qDebugPrintPathRespectHoles(const QList<QList<QPair<QPointF, int>>>& pathData);
     void _qDebugPrintPath(const QList<QList<QPointF>>& pathData);
 
-    bool            _isHolesActive = false;
+    bool            _isHolesActive;
     QList<QLineF>   _path;
     double          _gridSpace;
     double          _gridAngle;

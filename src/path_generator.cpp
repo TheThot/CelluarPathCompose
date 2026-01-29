@@ -16,7 +16,8 @@ PathGenerator::PathGenerator(QObject* parent) :
 PathGenerator::PathGenerator(double inStep, double inAngle, QObject *parent) :
                             QObject(parent),
                             _gridSpace(inStep),
-                            _gridAngle(inAngle)
+                            _gridAngle(inAngle),
+                            _isHolesActive(false)
 {
     pfc = new PathFinderCalculator();
 //    _initNonRespectInnerHoles();
@@ -113,6 +114,7 @@ QVariantList PathGenerator::pathTraj() const
 void PathGenerator::setGridAngle(double in)
 {
     _gridAngle = in;
+    pathUpdation();
 }
 
 void PathGenerator::pathUpdation()
@@ -603,6 +605,7 @@ QList<QList<QPointF>> PathGenerator::orientNonRespectPath(const QList<QLineF>& i
 
 void PathGenerator::setTransectWidth(double in) {
     _gridSpace = in;
+    pathUpdation();
 }
 
 void PathGenerator::setPathSegments(const QList<QPolygonF> &in) {
