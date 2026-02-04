@@ -15,9 +15,9 @@ Decomposer::Decomposer(QObject *parent)
     , m_sweepAngle(0.0)
     , m_showDecomposition(true)
     , m_showOrientedRect(true)
+    , _pb()
     , _isPathShow(false)
     , _trWidth(45)
-    , _pb()
 {
     _init();
     //создание созависимых сперва
@@ -28,13 +28,39 @@ Decomposer::Decomposer(QObject *parent)
     });
     connect(this, &Decomposer::holesPolygonsChanged, this, [this] (){
         _transects->setPolyHolesList(m_holes);
-        _transects->changeHolesActiveState(); // TODO повесить на сигнал qml смены режима
+        _transects->changeHolesActiveState();
     });
     
     //после определяем остальное
 //    createDefaultPolygon();
     createPolygonWithHoles();
+
+    //выполняем предобработку holes (граничные случаи)
+    preprocPolys(m_originalPolygon, m_holes);
+
     updateDecomposition();
+}
+
+Decomposer::Decomposer(double pathSpace, double angle, QObject *parent)
+        : QObject(parent)
+        , m_sweepAngle(angle)
+        , m_showDecomposition(false)
+        , m_showOrientedRect(false)
+        , _pb()
+        , _isPathShow(false)
+        , _trWidth(pathSpace)
+{
+    _init();
+    //создание созависимых сперва
+    _transects = new PathGenerator(_trWidth, m_sweepAngle, this);
+//    connect(this, &Decomposer::sweepAngleChanged, _transects, &PathGenerator::pathUpdation);
+    connect(this, &Decomposer::originalPolygonChanged, this, [this] (){
+        _transects->setSurvPoly(m_originalPolygon);
+    });
+    connect(this, &Decomposer::holesPolygonsChanged, this, [this] (){
+        _transects->setPolyHolesList(m_holes);
+        _transects->changeHolesActiveState();
+    });
 }
 
 void Decomposer::_init(){
@@ -46,6 +72,20 @@ void Decomposer::_init(){
     connect(this , &Decomposer::sweepAngleChanged,          this, &Decomposer::updateCanvas);
     connect(this , &Decomposer::trWdthChanged,              this, &Decomposer::updateCanvas);
     connect(this , &Decomposer::showPathCoverageChanged,    this, &Decomposer::updateCanvas);
+}
+
+QList<QList<QPointF>> Decomposer::config(const QPolygonF& survPoly, const QList<QPolygonF>& holes)
+{
+    m_originalPolygon = survPoly;
+    if(!holes.isEmpty()) {
+        m_holes = holes;
+        preprocPolys(m_originalPolygon, m_holes);
+        emit holesPolygonsChanged();
+    }
+
+    emit originalPolygonChanged();
+    updateDecomposition();
+    return _transects->getPath();
 }
 
 PathGenerator* Decomposer::transects() const{
@@ -184,9 +224,6 @@ void Decomposer::updateDecomposition() {
         emit orientedRectChanged();
         return;
     }
-
-    //выполняем предобработку holes (граничные случаи)
-//    preprocPolys(m_originalPolygon, m_holes);
 
     // Вычисляем ориентированный ограничивающий прямоугольник
     QMap<OrientedLine, QLineF> buff = {};
@@ -624,6 +661,9 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
     QList<QMap<OrientedLine, QLineF>> copy = mapOriendtedHoleRectLines;
     resCells = boustrophedonDecomposition_compact(polygon, holes, copy, sweepAngle);
 
+    if(resCells.isEmpty())
+        return resCells;
+
     // Автоматическое определение пересечений и обработка
     int idxCellForHole1, idxCellForHole2;
     for(int i = 0; i < holes.count(); ++i) // каждая holes анализир
@@ -905,23 +945,6 @@ void Decomposer::setTransectWidth(double w) {
 
 double Decomposer::transectWidth() const {
     return _trWidth;
-}
-
-QList<QPolygonF>
-Decomposer::performDecomposition(QPolygonF &polygon, QList<QPolygonF> &holes, double sweepAngle) {
-//    m_mapOriendtedHoleRectLines.clear();
-    m_orientedRect.clear();
-    m_bpd_decompositionCells.clear();
-    QMap<OrientedLine, QLineF> buff = {};
-    //выполняем предобработку holes (граничные случаи)
-    preprocPolys(polygon, holes);
-    m_orientedRect = getOrientedBoundingRect(polygon, buff, sweepAngle);
-    m_orientedHoleRects = getOrientedBoundingHoleRects(polygon, holes, sweepAngle);
-    auto res = boustrophedonDecomposition(polygon,  holes, m_mapOriendtedHoleRectLines, sweepAngle);
-    /*res.append(m_orientedRect);
-    _debugPolyListToConsole(res);
-    res.pop_back();*/
-    return res;
 }
 
 void Decomposer::_debugPolyListToConsole(const QList<QPolygonF>& polygons) {

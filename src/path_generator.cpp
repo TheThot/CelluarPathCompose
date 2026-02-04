@@ -15,9 +15,9 @@ PathGenerator::PathGenerator(QObject* parent) :
 
 PathGenerator::PathGenerator(double inStep, double inAngle, QObject *parent) :
                             QObject(parent),
+                            _isHolesActive(false),
                             _gridSpace(inStep),
-                            _gridAngle(inAngle),
-                            _isHolesActive(false)
+                            _gridAngle(inAngle)
 {
     pfc = new PathFinderCalculator();
 //    _initNonRespectInnerHoles();
@@ -122,7 +122,7 @@ void PathGenerator::pathUpdation()
     _path.clear();
     _pathRespectHoles.clear();
     _pathIntoCell.clear();
-    QVector<const QPolygonF*> order;
+    _ordering.clear();
     _startEndPointsIntoCell.clear();
     _pathConnectionLines.clear();
 
@@ -140,7 +140,7 @@ void PathGenerator::pathUpdation()
                 _pathIntoCell[&_bpd_decompositionCells->at(i)] = resPointList;
             }
         }
-        _configurePathIntoCell(order, _startEndPointsIntoCell);
+        _configurePathIntoCell(_ordering, _startEndPointsIntoCell);
         /*auto iter = _pathIntoCell.begin();
         while(iter != _pathIntoCell.end()) {
             _qDebugPrintPath(iter.value());
@@ -203,7 +203,7 @@ QList<QList<QPointF>> PathGenerator::_pathRouteConnections(const QVector<QPair<Q
         auto connectionPath = pfc->getPath2d();
 
         if (!connectionPath.isEmpty()) {
-//            connectionPath = adaptiveSample(connectionPath, 40, 4);
+            connectionPath = adaptiveSample(connectionPath, 40, 4);
             result.append(connectionPath);
         }
 
@@ -214,7 +214,6 @@ QList<QList<QPointF>> PathGenerator::_pathRouteConnections(const QVector<QPair<Q
 
 QHash< const QPolygonF*, QList<QList<QPointF>> > PathGenerator::_pathRouteCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath)
 {
-
     QHash< const QPolygonF*, QList<QList<QPointF>> > result;
 
     if (inPath.isEmpty()) {
@@ -262,75 +261,19 @@ QHash< const QPolygonF*, QList<QList<QPointF>> > PathGenerator::_pathRouteCells(
     return result;
 }
 
-QList<QList<QPointF>>  PathGenerator::performRespectPathCnstr(const QList<QPolygonF>& dcmpsRes, const QList<QPolygonF>& holes) {
-    _pathIntoCell.clear();
-    pfc->init(holes);
+QList<QList<QPointF>> PathGenerator::getPath() {
     QList<QList<QPointF>> res = {};
-    for (int i = 0; i < dcmpsRes.count(); ++i) {
-        auto segmRes = _pathSegmRelationToCell(dcmpsRes.at(i));
-        QList<QList<QPointF>> resPointList = orientNonRespectPath(segmRes);
-        if (!resPointList.isEmpty()) {
-            resPointList = _improvePathRespectCell(resPointList, dcmpsRes.at(i));
-            _pathIntoCell[&dcmpsRes[i]] = resPointList;
+
+    if(_holes != nullptr) {
+        int counter = 0;
+        for (; counter < _pathConnectionLines.count(); ++counter) {
+            res.append(_pathIntoCell[_ordering[counter]]);
+            res.append(_pathConnectionLines[counter]);
         }
+        res.append(_pathIntoCell[_ordering[counter]]);
     }
-
-    if (_pathIntoCell.isEmpty()) {
-        return res;
-    }
-    QVector<const QPolygonF*> order;
-    QVector< QPair<QPointF, QPointF> > flP;
-    _configurePathIntoCell(order, flP);
-
-    QHash< const QPolygonF*, QList<QLineF>> holesLines;
-    for(const auto& currHole: holes){
-        QList<QLineF> temp;
-        for(int i = 0; i < currHole.count(); ++i){
-            temp.append(QLineF(currHole[i], currHole[(i+1)%currHole.count()]));
-        }
-        holesLines[&currHole] = temp;
-    }
-
-    auto flPiter = flP.constBegin(); // точки начала и конца разных Cell
-    // Обрабатываем остальные элементы
-    for (const auto& currCell: order) {
-        QList<QList<QPointF>> configPathRes;
-        const auto& currentPaths = _pathIntoCell[currCell];
-
-        if (currentPaths.isEmpty()) {
-            std::cout << "Bad section path is empty\n";
-            continue;
-        }
-
-        QList<QPointF> orderExtraPolyline;
-        // каждый галс
-        for(int i = 0; i < currentPaths.count()-1; ++i){
-            QList<QPointF> buff;
-            buff.append(currentPaths[i].first());
-            QLineF betweenLines = QLineF(currentPaths[i].last(), currentPaths[i+1].first());
-            for(const auto& currHole : holesLines)
-                if(extraDangerPointsRoutine(currHole, betweenLines, orderExtraPolyline)) // добавляем точки полигона если они есть в местах пересечений чтобы траектория не проходила внутри holes
-                    break;
-            buff.append(orderExtraPolyline);
-            configPathRes.append(buff);
-        }
-        configPathRes.append(QList<QPointF>{currentPaths.last().first()/*, currentPaths.last().last()*/});
-
-        // выполняем соединение Cell путями
-        auto prevP = flPiter->second;
-        ++flPiter;
-        QList<QPointF> connectionPath;
-        if(flPiter != flP.constEnd()) {
-            QLineF temp = QLineF(prevP, flPiter->first);
-
-            pfc->perform(temp.p1(), temp.p2());
-            connectionPath = pfc->getPath2d();
-            connectionPath = adaptiveSample(connectionPath, 40, 4);
-        }
-        configPathRes.append(connectionPath);
-        res.append(configPathRes);
-    }
-    //res.last().append(_pathIntoCell[order.last()].last().last());
+    else
+        res.append(_orientedPathSimpl);
 
     return res;
 }

@@ -32,6 +32,8 @@ public:
 
     explicit Decomposer(QObject *parent = nullptr);
 
+    explicit Decomposer(double pathSpace, double angle, QObject *parent = nullptr);
+
     // Основные свойства
     double      transectWidth() const;
     PathGenerator* transects() const;
@@ -63,6 +65,7 @@ public:
         return result;
     }
 
+    QList<QList<QPointF>> config(const QPolygonF& survPoly, const QList<QPolygonF>& holes = QList<QPolygonF>{});
     // Методы для вызова из QML
     Q_INVOKABLE void setTransectWidth(double w);
     Q_INVOKABLE void setShowPathCoverage(bool in);
@@ -85,11 +88,8 @@ public:
         }
     }
 
-
     void preprocPolys(QPolygonF& survPoly, QList<QPolygonF>& holes);
     QList<QPolygonF> getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes, double angleDegrees);
-    QList<QPolygonF> performDecomposition(QPolygonF& polygon, QList<QPolygonF>& holes,
-                                                double sweepAngle);
 
 signals:
     void updateCanvas();

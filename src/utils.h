@@ -16,6 +16,11 @@
 #include <iostream>
 #include "PolyBuilder.h"
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#pragma clang diagnostic ignored "-Wunused"
+#endif
+
 namespace baseFunc {
 
     // Вспомогательная функция для вычисления площади
@@ -565,12 +570,32 @@ namespace baseFunc {
             }
 
             // Гарантируем минимальное количество точек
-            if (result.size() < minPoints && i % (points.size() / minPoints) == 0) {
-                result.append(curr);
+            // Исправление: проверяем, что деление возможно
+            if (result.size() < minPoints && minPoints > 0) {
+                // Равномерно распределяем точки
+                int step = qMax(1, points.size() / minPoints);
+                if (i % step == 0) {
+                    result.append(curr);
+                }
             }
         }
 
         result.append(points.last());
+
+        // Дополнительная гарантия минимального количества точек
+        if (result.size() < minPoints && minPoints <= points.size()) {
+            // Просто равномерно выбираем точки
+            result.clear();
+            result.append(points.first());
+            int step = qMax(1, (points.size() - 2) / (minPoints - 2));
+            for (int i = 1; i < points.size() - 1; i++) {
+                if (i % step == 0 || result.size() < minPoints) {
+                    result.append(points[i]);
+                }
+            }
+            result.append(points.last());
+        }
+
         return result;
     }
 
