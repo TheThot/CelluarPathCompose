@@ -7,6 +7,8 @@
 
 #include "utils.h"
 #include "PathFinderCalculator.h"
+#include "segmentation.h"
+
 #include <QPolygonF>
 #include <QLineF>
 #include <QVariantList>
@@ -103,6 +105,7 @@ private:
     const QList<QPolygonF>*     _bpd_decompositionCells = nullptr;
 
     PathFinderCalculator *pfc;
+    segmentation::Segmentation<QList<QList<QPointF>>> *segObj;
 };
 
 template<>

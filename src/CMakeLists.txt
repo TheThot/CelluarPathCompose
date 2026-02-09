@@ -6,6 +6,7 @@ add_library(src
         path_generator.cpp
         PathFinderCalculator.cc
         PolyBuilder.cpp
+        segmentation.cpp
 )
 
 
