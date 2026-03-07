@@ -19,7 +19,7 @@ PathGenerator::PathGenerator(double inStep, double inAngle, QObject *parent) :
                             _gridSpace(inStep),
                             _gridAngle(inAngle)
 {
-    pfc = new PathFinderCalculator();
+    clcntn  = new Cellconnection();
 //    _initNonRespectInnerHoles();
 }
 
@@ -131,7 +131,7 @@ void PathGenerator::pathUpdation()
 
     if(_holes != nullptr) {
 //        std::cout << "[PathGenerator] _bpd_decompositionCells count is " << _bpd_decompositionCells->count() << std::endl;
-        pfc->init(*_holes);
+        clcntn->init(_holes);
         for (int i = 0; i < _bpd_decompositionCells->count(); ++i) {
             auto res = _pathSegmRelationToCell(_bpd_decompositionCells->at(i));
             QList<QList<QPointF>> resPointList = orientNonRespectPath(res);
@@ -199,8 +199,8 @@ QList<QList<QPointF>> PathGenerator::_pathRouteConnections(const QVector<QPair<Q
 
         QLineF temp = QLineF(inConnections[i].second, inConnections[i+1].first);
 
-        pfc->perform(temp.p1(), temp.p2());
-        auto connectionPath = pfc->getPath2d();
+        clcntn->perform(temp.p1(), temp.p2());
+        auto connectionPath = clcntn->getPath();
 
         if (!connectionPath.isEmpty()) {
             connectionPath = adaptiveSample(connectionPath, 40, 4);
