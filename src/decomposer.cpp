@@ -884,8 +884,8 @@ void Decomposer::createPolygonWithHoles() {
               << QPointF(250, 400-50)
               << QPointF(250, 350-50)
               << QPointF(200, 350-50);
-//    m_holes.append(secHole);
-//    m_holes.append(thirdHole);
+    m_holes.append(secHole);
+    m_holes.append(thirdHole);
     /*QPolygonF secHole;
     secHole << QPointF(289.64 - 100, 325.00 - 100)
             << QPointF(325.00 - 100, 360.36 - 100)

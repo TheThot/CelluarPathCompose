@@ -102,9 +102,13 @@ namespace baseFunc {
 
         while(true) {
             // Добавляем точку линии
-            currentIdx = goForward ? (currentIdx + 1) % size : (currentIdx - 1 + size) % size;
+            currentIdx = goForward ?
+                         (currentIdx + 1) % size :
+                         (currentIdx - 1 + size) % size;
 
-            orderExtraPolyline.append( goForward ? polyRep[currentIdx].p1() : polyRep[currentIdx].p2() );
+            orderExtraPolyline.append(  goForward ?
+                                        polyRep[currentIdx].p1() :
+                                        polyRep[currentIdx].p2() );
 
             if(currentIdx == endIdx) break;
         }

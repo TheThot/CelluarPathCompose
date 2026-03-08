@@ -39,14 +39,14 @@ void Cellconnection::perform(const QPointF &pointFrom, const QPointF &pointTo)
     _pathArea.setTopLeft(_pointFrom2d);
     _pathArea.setBottomRight(_pointTo2d);
 
-    /*if (_isPointInObstacle(_pointFrom2d)) {
+    if (_isPointInObstacle(_pointFrom2d)) {
         // Ищем ближайшую свободную точку
         _pointFrom2d = _findNearestFreePoint(_pointFrom2d);
     }
 
     if (_isPointInObstacle(_pointTo2d)) {
         _pointTo2d = _findNearestFreePoint(_pointTo2d);
-    }*/
+    }
 
     _buildPath2d();
 }
@@ -56,35 +56,51 @@ void Cellconnection::_buildPath2d()
     // базовая кратчайшая линия от А к Б
     bool flag = false;
     QLineF fastTrack(_pointFrom2d, _pointTo2d);
-    fastTrack = extendLineBothWays(fastTrack, 10);
+//    fastTrack = extendLineBothWays(fastTrack, 10);
+
     _resPath.clear();
     _resPath.append(_pointFrom2d);
-    for (const auto& currHole:*_holes)
-    {
-        QList<QPointF> intersections;
+
+    QList<QPointF> intersections;
+    QList<QList<QLineF>> polyRepHolesV;
+
+    for (const auto& currHole:*_holes) {
         QList<QLineF> polyRep;
-        QList<QPointF> res;
-        for (int i = 0; i < currHole.size(); ++i)
-        {
+        for (int i = 0; i < currHole.size(); ++i) {
             auto p1 = currHole[i];
-            auto p2 = currHole[(i+1)%currHole.size()];
+            auto p2 = currHole[(i + 1) % currHole.size()];
             QLineF holeLine(p1, p2);
             polyRep.push_back(holeLine);
             // накапливаем возможные пересечения
-            intersectionListFormimgRoutine(fastTrack, holeLine, intersections,QLineF::BoundedIntersection);
+            intersectionListFormimgRoutine(fastTrack, holeLine, intersections, QLineF::BoundedIntersection);
         }
-        if (!intersections.isEmpty() && intersections.size() >= 2)
-        {
-            QLineF intersectionLine(intersections[0], intersections[1]);
-            // определяем как обойти пересечение
+        polyRepHolesV.push_back(polyRep);
+    }
+
+    // сортируем по дальности
+    std::sort(intersections.begin(), intersections.end(),
+              [fastTrack](QPointF& a, QPointF& b)
+    {
+        auto distA = QLineF(fastTrack.p1(), a).length();
+        auto distB = QLineF(fastTrack.p1(), b).length();
+        return distA < distB;
+    });
+
+    for (int i = 0; i < intersections.size()-1; i+=2)
+    {
+        QLineF intersectionLine(intersections[i], intersections[i+1]);
+        // определяем как обойти пересечение
+        for(const auto& polyRep: polyRepHolesV) {
+            QList<QPointF> res;
             flag = extraDangerPointsRoutine(polyRep, intersectionLine, res);
             if (flag) {
                 for (auto &curr: res)
                     _resPath.append(curr);
-//                _resPath.append(intersections[1]);
+                _resPath.append(intersectionLine.p2());
             }
         }
     }
+
     _resPath.append(_pointTo2d);
 }
 
