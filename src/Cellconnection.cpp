@@ -21,9 +21,9 @@ Cellconnection::~Cellconnection()
 
 }
 
-void Cellconnection::init(const QList<QPolygonF>* holes)
+void Cellconnection::init(const QList<QPolygonF> *holes)
 {
-    if (_holes == nullptr)
+    if(_holes == nullptr)
         _holes = holes;
 }
 
@@ -46,8 +46,7 @@ void Cellconnection::perform(const QPointF &pointFrom, const QPointF &pointTo)
 
     if (_isPointInObstacle(_pointTo2d)) {
         _pointTo2d = _findNearestFreePoint(_pointTo2d);
-    }
-    */
+    }*/
 
     _buildPath2d();
 }
@@ -55,7 +54,9 @@ void Cellconnection::perform(const QPointF &pointFrom, const QPointF &pointTo)
 void Cellconnection::_buildPath2d()
 {
     // базовая кратчайшая линия от А к Б
+    bool flag = false;
     QLineF fastTrack(_pointFrom2d, _pointTo2d);
+    fastTrack = extendLineBothWays(fastTrack, 10);
     _resPath.clear();
     _resPath.append(_pointFrom2d);
     for (const auto& currHole:*_holes)
@@ -76,13 +77,11 @@ void Cellconnection::_buildPath2d()
         {
             QLineF intersectionLine(intersections[0], intersections[1]);
             // определяем как обойти пересечение
-            extraDangerPointsRoutine(polyRep, intersectionLine, res);
-            if (!res.isEmpty() && res.size() >= 1)
-            {
-                for (auto& curr: res)
-                {
+            flag = extraDangerPointsRoutine(polyRep, intersectionLine, res);
+            if (flag) {
+                for (auto &curr: res)
                     _resPath.append(curr);
-                }
+//                _resPath.append(intersections[1]);
             }
         }
     }

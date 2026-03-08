@@ -64,7 +64,7 @@ Canvas {
         var step = 1;
         for (var k = 0; k < lines.length; k++) {
             for(var j = 0; j < lines[k].length-1; j+=step){
-                drawAline(ctx, lines[k][j], lines[k][j+1], "red")
+                drawAline(ctx, lines[k][j], lines[k][j+1], "green")
             }
         }
         ctx.restore()  // восстановить состояние контекста

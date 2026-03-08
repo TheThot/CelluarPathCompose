@@ -203,7 +203,6 @@ QList<QList<QPointF>> PathGenerator::_pathRouteConnections(const QVector<QPair<Q
         auto connectionPath = clcntn->getPath();
 
         if (!connectionPath.isEmpty()) {
-            connectionPath = adaptiveSample(connectionPath, 40, 4);
             result.append(connectionPath);
         }
 

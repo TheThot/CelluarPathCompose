@@ -82,28 +82,7 @@ namespace baseFunc {
             return true;
         }
 
-        // Проверяем, являются ли линии соседними с учетом замкнутости
         int size = polyRep.size();
-        bool areAdjacent = false;
-
-        // Проверка соседности
-        if(std::abs(firstLidx - secondLidx) == 1 || (firstLidx == 0 && secondLidx == size-1) ||
-                (firstLidx == size-1 && secondLidx == 0))
-            areAdjacent = true;
-
-        if(areAdjacent) {
-            // Для соседних линий добавляем только точку соединения между ними
-            // Нужно определить правильную точку соединения
-            if((firstLidx + 1) % size == secondLidx) {
-                // firstLidx предшествует secondLidx
-                orderExtraPolyline.append(polyRep[firstLidx].p2());
-            } else {
-                // secondLidx предшествует firstLidx
-                // Добавляем точки в обратном порядке
-                orderExtraPolyline.append(polyRep[secondLidx].p2());
-            }
-            return true;
-        }
 
         // Для линий собираем все промежуточные вершины
         // Определяем направление обхода
@@ -121,24 +100,13 @@ namespace baseFunc {
         // Выбираем направление с меньшим расстоянием
         bool goForward = forwardDistance <= backwardDistance;
 
-        if(goForward) {
-            // Обход вперед
-            while(true) {
-                currentIdx = (currentIdx + 1) % size;
-                if(currentIdx == endIdx) break;
+        while(true) {
+            // Добавляем точку линии
+            currentIdx = goForward ? (currentIdx + 1) % size : (currentIdx - 1 + size) % size;
 
-                // Добавляем начальную точку текущей линии
-                orderExtraPolyline.append(polyRep[currentIdx].p1());
-            }
-        } else {
-            // Обход назад
-            while(true) {
-                // Добавляем конечную точку предыдущей линии
-                orderExtraPolyline.append(polyRep[currentIdx].p1());
+            orderExtraPolyline.append( goForward ? polyRep[currentIdx].p1() : polyRep[currentIdx].p2() );
 
-                currentIdx = (currentIdx - 1 + size) % size;
-                if(currentIdx == endIdx) break;
-            }
+            if(currentIdx == endIdx) break;
         }
 
         return true;
