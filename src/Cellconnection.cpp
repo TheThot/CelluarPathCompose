@@ -39,15 +39,6 @@ void Cellconnection::perform(const QPointF &pointFrom, const QPointF &pointTo)
     _pathArea.setTopLeft(_pointFrom2d);
     _pathArea.setBottomRight(_pointTo2d);
 
-    if (_isPointInObstacle(_pointFrom2d)) {
-        // Ищем ближайшую свободную точку
-        _pointFrom2d = _findNearestFreePoint(_pointFrom2d);
-    }
-
-    if (_isPointInObstacle(_pointTo2d)) {
-        _pointTo2d = _findNearestFreePoint(_pointTo2d);
-    }
-
     _buildPath2d();
 }
 
@@ -56,10 +47,8 @@ void Cellconnection::_buildPath2d()
     // базовая кратчайшая линия от А к Б
     bool flag = false;
     QLineF fastTrack(_pointFrom2d, _pointTo2d);
-//    fastTrack = extendLineBothWays(fastTrack, 10);
 
     _resPath.clear();
-    _resPath.append(_pointFrom2d);
 
     QList<QPointF> intersections;
     QList<QList<QLineF>> polyRepHolesV;
@@ -86,7 +75,9 @@ void Cellconnection::_buildPath2d()
         return distA < distB;
     });
 
-    for (int i = 0; i < intersections.size()-1; i+=2)
+    intersections.append(fastTrack.p2()); intersections.prepend(fastTrack.p1());
+
+    for (int i = 0; i < intersections.size()-1; ++i)
     {
         QLineF intersectionLine(intersections[i], intersections[i+1]);
         // определяем как обойти пересечение
@@ -101,50 +92,9 @@ void Cellconnection::_buildPath2d()
         }
     }
 
-    _resPath.append(_pointTo2d);
-}
+    if(!_resPath.contains(_pointFrom2d))
+        _resPath.prepend(_pointFrom2d);
 
-bool Cellconnection::_isPointInObstacle(const QPointF& point) const {
-    PolyBuilder pb = PolyBuilder();
-    for (const auto& obstacle : *_holes) {
-        QList<QPolygonF> temp;
-        temp.push_back(obstacle);
-        temp = pb.unitedListWrp(temp, pb.getScale()*4);
-        if (temp[0].containsPoint(point, Qt::OddEvenFill)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-QPointF Cellconnection::_findNearestFreePoint(const QPointF& point) {
-    // Если точка внутри препятствия, ищем ближайшую свободную
-    if (!_isPointInObstacle(point)) {
-        return point;  // Точка уже свободна
-    }
-
-    // Поиск в радиусе
-    double radius = 1.0;
-    const int maxAttempts = 100;
-
-    for (int attempt = 0; attempt < maxAttempts; ++attempt) {
-        // Проверяем точки по окружности
-        for (double angle = 0; angle < 2 * M_PI; angle += M_PI / 8) {
-            QPointF candidate(
-                    point.x() + radius * cos(angle),
-                    point.y() + radius * sin(angle)
-            );
-
-            if (!_isPointInObstacle(candidate)) {
-                //                qDebug() << "Исправлена точка из" << point << "в" << candidate;
-                return candidate;
-            }
-        }
-
-        // Увеличиваем радиус для следующей попытки
-        radius *= 1.5;
-    }
-
-    //    qWarning() << "Не удалось найти свободную точку рядом с" << point;
-    return point;  // Возвращаем оригинальную
+    if(!_resPath.contains(_pointTo2d))
+        _resPath.append(_pointTo2d);
 }
