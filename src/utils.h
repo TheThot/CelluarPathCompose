@@ -79,7 +79,7 @@ namespace baseFunc {
         // Если точки на одной линии, промежуточных точек нет
         if(firstLidx == secondLidx) {
             // Ничего не добавляем
-            return true;
+            return false;
         }
 
         int size = polyRep.size();
@@ -182,90 +182,6 @@ namespace baseFunc {
         return rule;
     }
 
-
-    static void intersectLinesWithPolygon(const QList<QLineF>& lineList, const QPolygonF& polygon, QList<QLineF>& resultLines, const QPolygonF& bounds, const QList<QPolygonF>* _holes)
-    {
-        resultLines.clear();
-
-        for (const QLineF& line : lineList) {
-            QList<QPointF> intersections;
-
-            // Intersect the line with all the polygon edges
-            for (int i=0; i<polygon.count(); ++i) {
-                QLineF polygonEdge(polygon[i], polygon[(i+1) % polygon.count()]);
-                QPointF intersectPoint;
-
-                if (line.intersect(polygonEdge, &intersectPoint) == QLineF::BoundedIntersection) {
-                    if (!intersections.contains(intersectPoint) && bounds.containsPoint(intersectPoint, Qt::WindingFill))
-                        intersections.append(intersectPoint);
-                }
-            }
-
-            for(const auto& currHole:*_holes){
-                for (int i=0; i<currHole.count(); ++i) {
-                    QLineF polygonEdge(currHole[i], currHole[(i+1) % currHole.count()]);
-                    QPointF intersectPoint;
-
-                    if (line.intersect(polygonEdge, &intersectPoint) == QLineF::BoundedIntersection) {
-                        if (!intersections.contains(intersectPoint) && bounds.containsPoint(intersectPoint, Qt::WindingFill))
-                            intersections.append(intersectPoint);
-                    }
-                }
-            }
-
-            std::sort(intersections.begin(), intersections.end(), [&line](const QPointF& pointStart, const QPointF& pointEnd) {
-                return QLineF(line.p1(), pointStart).length() < QLineF(line.p1(), pointEnd).length();
-            });
-
-            for (int j=0; j+1<intersections.count(); j+=2) {
-                auto temp = QLineF(intersections[j], intersections[j + 1]);
-                resultLines.append(temp);
-            }
-        }
-
-        if (!resultLines.isEmpty()) {
-            QList<QLineF> linesList;
-            linesList.append(resultLines.first());
-            resultLines.removeFirst();
-
-            while (!resultLines.isEmpty()) {
-                QLineF& tempLine = linesList.last();
-                QPointF tempPoint = tempLine.p2();
-
-                int indexNear = -1;
-                double minDistance = std::numeric_limits<double>::max();
-                bool reverse = false;
-
-                for (int i = 0; i < resultLines.count(); ++i) {
-                    double distanceP1 = QLineF(tempPoint, resultLines[i].p1()).length();
-                    double distanceP2 = QLineF(tempPoint, resultLines[i].p2()).length();
-
-                    if (distanceP1 < minDistance) {
-                        minDistance = distanceP1;
-                        indexNear = i;
-                        reverse = false;
-                    }
-                    if (distanceP2 < minDistance) {
-                        minDistance = distanceP2;
-                        indexNear = i;
-                        reverse = true;
-                    }
-                }
-
-                if (indexNear != -1) {
-                    QLineF nextLine = resultLines.takeAt(indexNear);
-                    if (reverse) {
-                        nextLine = QLineF(nextLine.p2(), nextLine.p1());
-                    }
-                    linesList.append(nextLine);
-                }
-                else
-                    break;
-            }
-            resultLines = linesList;
-        }
-    }
-
     static void intersectLinesWithPolygon(const QList<QLineF>& lineList, const QPolygonF& polygon, QList<QLineF>& resultLines)
     {
         resultLines.clear();
@@ -303,7 +219,6 @@ namespace baseFunc {
 
                 int indexNear = -1;
                 double minDistance = std::numeric_limits<double>::max();
-                bool reverse = false;
 
                 for (int i = 0; i < resultLines.count(); ++i) {
                     double distanceP1 = QLineF(tempPoint, resultLines[i].p1()).length();
@@ -312,20 +227,15 @@ namespace baseFunc {
                     if (distanceP1 < minDistance) {
                         minDistance = distanceP1;
                         indexNear = i;
-                        reverse = false;
                     }
                     if (distanceP2 < minDistance) {
                         minDistance = distanceP2;
                         indexNear = i;
-                        reverse = true;
                     }
                 }
 
                 if (indexNear != -1) {
                     QLineF nextLine = resultLines.takeAt(indexNear);
-                    if (reverse) {
-                        nextLine = QLineF(nextLine.p2(), nextLine.p1());
-                    }
                     linesList.append(nextLine);
                 }
                 else

@@ -67,17 +67,11 @@ private:
 
     QList<QList<QPointF>>   _improvePathRespectCell(const QList<QList<QPointF>>& resPointList, const QPolygonF& cell);
     QList<QLineF>           _pathSegmRelationToCell(const QPolygonF& inPoly);
-    QList<QLineF>           _initNonRespectInnerHoles(const QPolygonF* inPoly);
     QVariantList             _oneLoopTraj(const QList<QList<QPointF>>& in) const;
-    QList<QList<QPointF>>   _orientNonRespectPath(const QList<QLineF>& inPath);
     template<typename Type>
     void                    _orientLineOneDirection(const QList<Type>& lineList, QList<Type>& resultLines);
 
-
-    QHash< const QPolygonF*,
-    QList<QList<QPointF>> >  _pathRouteCells(const QHash< const QPolygonF*, QList<QList<QPointF>> >& inPath);
-    QHash< const QPolygonF*,
-    QList<QList<QPointF>> > _configurePathIntoCell(QVector< const QPolygonF* >& order, QVector< QPair<QPointF, QPointF> >& flP);
+    void _configurePathIntoCell(QVector< const QPolygonF* >& order, QVector< QPair<QPointF, QPointF> >& flP);
     QList<QList<QPointF>>   _pathRouteConnections(const QVector<QPair<QPointF, QPointF>>& inPath);
 
     void _qDebugPrintPathRespectHoles(const QList<QList<QPair<QPointF, int>>>& pathData);

@@ -719,6 +719,15 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
         }
     }
 
+    for(auto & currCell: resCells)
+    {
+        for (const auto& currHole:m_holes)
+        {
+            auto res = _pb.subtractedListWrp(currCell, currHole, false);
+            currCell = _pb.snglIntersctnWrp(res[0], m_originalPolygon);
+        }
+    }
+
     return resCells;
 }
 
