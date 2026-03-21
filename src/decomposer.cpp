@@ -80,7 +80,8 @@ QList<QList<QPointF>> Decomposer::config(const QPolygonF& survPoly, const QList<
     if(!holes.isEmpty()) {
         m_holes = holes;
         preprocPolys(m_originalPolygon, m_holes);
-        emit holesPolygonsChanged();
+        if(m_holes.count())
+            emit holesPolygonsChanged();
     }
 
     emit originalPolygonChanged();
@@ -128,7 +129,8 @@ QVariantList Decomposer::bpdDecompositionCells() const {
 
 QVariantList Decomposer::decompositionCells() const {
     QVariantList cellsList;
-    for (const QPolygonF &cell : m_decompositionCells) {
+    auto currKindCells = _decmpsKind ? m_bpd_decompositionCells : m_decompositionCells;
+    for (const QPolygonF &cell : currKindCells) {
         QVariantList polygonList;
         for (const QPointF &point : cell) {
             QVariantMap pointMap;
@@ -231,8 +233,7 @@ void Decomposer::updateDecomposition() {
     m_orientedHoleRects = getOrientedBoundingHoleRects(m_originalPolygon, m_holes, m_sweepAngle);
 
     // Выполняем трапецоидальную декомпозицию
-    std::vector<QPolygonF> cells = trapezoidalDecomposition(m_originalPolygon, m_sweepAngle);
-    m_decompositionCells = QVector<QPolygonF>::fromStdVector(cells);
+    m_decompositionCells = trapezoidalDecomposition(m_originalPolygon, m_sweepAngle);
 
     // Выполняем бустрофедон декомпозицию
     m_bpd_decompositionCells = boustrophedonDecomposition(m_originalPolygon, m_holes, m_mapOriendtedHoleRectLines, m_sweepAngle);
@@ -252,51 +253,52 @@ void Decomposer::updateDecomposition() {
 void Decomposer::preprocPolys(QPolygonF& survPoly, QList<QPolygonF>& holes){
     // проверяем не наползает ли holes один на другой
     PolyBuilder pb = PolyBuilder();
-    QList<QPolygonF> resHoles;
-    resHoles = holes;
-    for(int i = 0; i < holes.count(); ++i) {
-        for (int j = resHoles.count() - 1; j > i; --j) {
-            auto resIntersect = pb.snglIntersctnWrp(resHoles[j], holes[i]);
-            if(!resIntersect.isEmpty()) {
-                auto temp = QList<QPolygonF>{};
-                temp.append(resHoles[j]);
-                temp.append(holes[i]);
-                resHoles.pop_back(); // удаляем как отдельную сущ эту hole
-                resHoles.replace(i, pb.unitedListWrp(temp).at(0));
+    QList<QPolygonF> resHoles = {};
+    resHoles.append(holes[0]);
+    for(int i = 1; i < holes.count(); ++i) {
+        QList<QPolygonF> merged;
+        QPolygonF currentHole = holes[i];
+
+        for (int j = 0; j < resHoles.count(); ++j) {
+            auto resIntersect = pb.snglIntersctnWrp(resHoles[j], currentHole);
+            if (!resIntersect.isEmpty()) {
+                // накопленный результатом в случае пересечений
+                currentHole = pb.unitedListWrp(QList{resHoles[j], currentHole}).at(0);
+            } else {
+                merged.append(resHoles[j]);
             }
         }
+
+        merged.append(currentHole);
+        resHoles = merged;
     }
     holes = resHoles;
     resHoles.clear();
     // проверяем не наползает ли holes на survPoly и в границах ли он
-    // todo обойти этот случай аккуратнее
     for(int i = 0; i < holes.count(); ++i){
         int containsEdgePointCount = 0;
         for(const auto& currHoleP: holes[i])
             if(survPoly.containsPoint(currHoleP, Qt::OddEvenFill))
                 ++containsEdgePointCount;
-        if(containsEdgePointCount >= holes[i].count() - 1){ // случай что почти весь hole внутри survPoly (корректируем hole)
-            resHoles.append(pb.snglIntersctnWrp(holes[i], survPoly));
-        }else{
-            // корректируем survPoly и убираем тот hole
-            if(containsEdgePointCount == 0)
-                continue;
-            else
-                survPoly = pb.subtractedListWrp(survPoly, holes[i]).at(0);
-        }
+        // корректируем survPoly и убираем тот hole
+        if(containsEdgePointCount == holes[i].count())
+            resHoles.append(holes[i]);
+        else
+            survPoly = pb.subtractedListWrp(survPoly, holes[i]).at(0);
+
     }
-    holes = resHoles;
-    for(auto& currHole: holes){
+    for(auto& currHole: resHoles){
         if(currHole.count() > 0) {
             currHole = pb.offsetWrp(currHole, pb.getScale() * 1.05);
             // открываем полигон (удаляем последнюю p которая = первой)
             currHole.pop_back();
         }
     }
+    holes = std::move(resHoles);
 }
 
-void Decomposer::resetPolygon() {
-    createPolygonWithHoles();
+void Decomposer::resetPolygon(int idx) {
+    createPolygonWithHoles(idx);
     emit originalPolygonChanged();
     updateDecomposition();
 }
@@ -309,8 +311,8 @@ void Decomposer::resetToPolygonWithHoleState() {
 }
 
 // Алгоритм трапецоидальной декомпозиции
-std::vector<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& polygon, double sweepAngle) {
-    std::vector<QPolygonF> cells;
+QList<QPolygonF> Decomposer::trapezoidalDecomposition(const QPolygonF& polygon, double sweepAngle) {
+    QList<QPolygonF> cells;
 
     if (polygon.size() < 3) {
         return cells;
@@ -721,11 +723,16 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
 
     for(auto & currCell: resCells)
     {
+        auto currCellSq = polygonArea(currCell);
         for (const auto& currHole:m_holes)
         {
             auto res = _pb.subtractedListWrp(currCell, currHole, false);
-            currCell = _pb.snglIntersctnWrp(res[0], m_originalPolygon);
+            for(const auto& currRes: res) // в отдельной реаилизации продуцировался один единственный todo выяснить почему так?
+                if(polygonArea(currRes) <= currCellSq + polygonArea(currHole) && polygonArea(currRes) >= currCellSq - polygonArea(currHole))
+                    currCell = currRes;
+            currCellSq = polygonArea(currCell);
         }
+        currCell = _pb.snglIntersctnWrp(currCell, m_originalPolygon);
     }
 
     return resCells;
@@ -852,8 +859,6 @@ double Decomposer::computePolygonArea(const QPolygonF& polygon) const{
     return std::abs(area) / 2.0;
 }
 
-//TODO определить порядок задания данных что первичнее qml или ++ ?
-// Предопределенные полигоны
 void Decomposer::createDefaultPolygon() {
     m_originalPolygon.clear();
     // Шестиугольник
@@ -864,7 +869,6 @@ void Decomposer::createDefaultPolygon() {
                       << QPointF(200, 400)
                       << QPointF(100, 250);
 }
-
 void Decomposer::createPolygonWithHoles() {
     m_originalPolygon.clear();
     m_holes.clear();
@@ -883,50 +887,78 @@ void Decomposer::createPolygonWithHoles() {
             << QPointF(180, 270)
             << QPointF(150, 225);
     m_holes.append(oneHole);
-    QPolygonF secHole;
-    secHole << QPointF(389.64, 425.00-200)
-            << QPointF(425.00, 460.36-200)
-            << QPointF(460.36, 425.00-200)
-            << QPointF(425.00, 389.64-200);
-    QPolygonF thirdHole;
-    thirdHole << QPointF(200, 400-50)
-              << QPointF(250, 400-50)
-              << QPointF(250, 350-50)
-              << QPointF(200, 350-50);
-    m_holes.append(secHole);
-    m_holes.append(thirdHole);
-    /*QPolygonF secHole;
-    secHole << QPointF(289.64 - 100, 325.00 - 100)
-            << QPointF(325.00 - 100, 360.36 - 100)
-            << QPointF(360.36 - 100, 325.00 - 100)
-            << QPointF(325.00 - 100, 289.64 - 100);
-    m_holes.append(secHole);
-    QPolygonF oneHole;
-    oneHole << QPointF(180 + 100, 180 + 100)
-            << QPointF(270 + 100, 180 + 100)
-            << QPointF(300 + 100, 225 + 100)
-            << QPointF(270 + 100, 270 + 100)
-            << QPointF(180 + 100, 270 + 100)
-            << QPointF(150 + 100, 225 + 100);
-    m_holes.append(oneHole);*/
-    /*QPolygonF oneHole;
-    oneHole << QPointF(389.64 - 200, 425.00-200)
-            << QPointF(425.00 - 200, 460.36-200)
-            << QPointF(460.36 - 200, 425.00-200)
-            << QPointF(425.00 - 200, 389.64-200);
-    QPolygonF secHole;
-    secHole << QPointF(389.64, 425.00-200)
-            << QPointF(425.00, 460.36-200)
-            << QPointF(460.36, 425.00-200)
-            << QPointF(425.00, 389.64-200);
-    QPolygonF thirdHole;
-    thirdHole << QPointF(389.64 - 100, 425.00-200)
-            << QPointF(425.00- 100, 460.36-200)
-            << QPointF(460.36- 100, 425.00-200)
-            << QPointF(425.00- 100, 389.64-200);
-    m_holes.append(oneHole);
-    m_holes.append(secHole);
-    m_holes.append(thirdHole);*/
+    emit originalPolygonChanged();
+}
+
+void Decomposer::createPolygonWithHoles(int idx) {
+    m_originalPolygon.clear();
+    m_holes.clear();
+    // Шестиугольник
+    m_originalPolygon << QPointF(200, 100)
+                      << QPointF(400, 100)
+                      << QPointF(500, 250)
+                      << QPointF(400, 400)
+                      << QPointF(200, 400)
+                      << QPointF(100, 250);
+    if(idx == 0) {
+        QPolygonF oneHole;
+        oneHole << QPointF(180, 180)
+                << QPointF(270, 180)
+                << QPointF(300, 225)
+                << QPointF(270, 270)
+                << QPointF(180, 270)
+                << QPointF(150, 225);
+        m_holes.append(oneHole);
+        QPolygonF secHole;
+        secHole << QPointF(389.64, 425.00 - 200)
+                << QPointF(425.00, 460.36 - 200)
+                << QPointF(460.36, 425.00 - 200)
+                << QPointF(425.00, 389.64 - 200);
+        QPolygonF thirdHole;
+        thirdHole << QPointF(200, 400 - 50)
+                  << QPointF(250, 400 - 50)
+                  << QPointF(250, 350 - 50)
+                  << QPointF(200, 350 - 50);
+        m_holes.append(secHole);
+        m_holes.append(thirdHole);
+    }
+    else if(idx == 1) {
+        QPolygonF secHole;
+
+        secHole << QPointF(289.64 - 100, 325.00 - 100)
+                << QPointF(325.00 - 100, 360.36 - 100)
+                << QPointF(360.36 - 100, 325.00 - 100)
+                << QPointF(325.00 - 100, 289.64 - 100);
+        m_holes.append(secHole);
+        QPolygonF oneHole;
+        oneHole << QPointF(180 + 100, 180 + 100)
+                << QPointF(270 + 100, 180 + 100)
+                << QPointF(300 + 100, 225 + 100)
+                << QPointF(270 + 100, 270 + 100)
+                << QPointF(180 + 100, 270 + 100)
+                << QPointF(150 + 100, 225 + 100);
+        m_holes.append(oneHole);
+    }
+    else if(idx == 2) {
+        QPolygonF oneHole;
+        oneHole << QPointF(389.64 - 200, 425.00 - 200)
+                << QPointF(425.00 - 200, 460.36 - 200)
+                << QPointF(460.36 - 200, 425.00 - 200)
+                << QPointF(425.00 - 200, 389.64 - 200);
+        QPolygonF secHole;
+        secHole << QPointF(389.64, 425.00 - 200)
+                << QPointF(425.00, 460.36 - 200)
+                << QPointF(460.36, 425.00 - 200)
+                << QPointF(425.00, 389.64 - 200);
+        QPolygonF thirdHole;
+        thirdHole << QPointF(389.64 - 100, 425.00 - 200)
+                  << QPointF(425.00 - 100, 460.36 - 200)
+                  << QPointF(460.36 - 100, 425.00 - 200)
+                  << QPointF(425.00 - 100, 389.64 - 200);
+        m_holes.append(oneHole);
+        m_holes.append(secHole);
+        m_holes.append(thirdHole);
+    }
     emit originalPolygonChanged();
 }
 
@@ -978,4 +1010,12 @@ void Decomposer::_debugPolyListToConsole(const QList<QPolygonF>& polygons) {
         }
     }
     dbg << "\n=========================\n";
+}
+
+bool Decomposer::decmpsKind() const {
+    return _decmpsKind;
+}
+
+void Decomposer::setDecmpsKind(bool in) {
+    _decmpsKind = in;
 }

@@ -125,10 +125,11 @@ void PathGenerator::pathUpdation()
 
     _path = initNonRespectInnerHoles(_survPolygon);
     _orientedPathSimpl = orientNonRespectPath(_path);
+    _orientedPathSimpl = _improvePathRespectCell(_orientedPathSimpl, *_survPolygon);
 
     if(_holes != nullptr) {
 //        std::cout << "[PathGenerator] _bpd_decompositionCells count is " << _bpd_decompositionCells->count() << std::endl;
-        clcntn->init(_holes);
+        clcntn->init(_holes, _survPolygon);
         for (int i = 0; i < _bpd_decompositionCells->count(); ++i) {
             auto res = _pathSegmRelationToCell(_bpd_decompositionCells->at(i));
             QList<QList<QPointF>> resPointList = orientNonRespectPath(res);
@@ -231,7 +232,10 @@ void PathGenerator::_configurePathIntoCell(QVector<const QPolygonF*>& order, QVe
     }
     auto stackIter = allIn.constBegin();
     auto currCell = allIn.last();
-    allIn.pop_back();
+    if(!allIn.empty())
+        allIn.pop_back();
+    else
+        return;
     auto prevPath = _pathIntoCell[currCell];
     double distance, distanceMin;
     int counter = 0;
@@ -262,9 +266,12 @@ void PathGenerator::_configurePathIntoCell(QVector<const QPolygonF*>& order, QVe
     for (const auto& curr: order) {
         QPair<QPointF, QPointF> temp;
         auto currPath = _pathIntoCell[curr];
-        temp.first = currPath.first().first();
-        temp.second = currPath.last().last();
-        flP.push_back(temp);
+        if(!currPath.isEmpty()) {
+            temp.first = currPath.first().first();
+            temp.second = currPath.last().last();
+
+            flP.push_back(temp);
+        }
     }
 }
 

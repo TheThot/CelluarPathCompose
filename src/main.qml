@@ -23,6 +23,7 @@ Window {
         showOrientedRect:   myToolbar.showOrientedRect
         showPathCoverage:   myToolbar.showPathCoverage
         transectWidth:      myToolbar.widthSpace
+        decmpsKind:         !myToolbar.buttonsVisibleProp
 
     }
 

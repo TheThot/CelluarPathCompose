@@ -27,6 +27,7 @@ class Decomposer : public QObject
     Q_PROPERTY(QVariantList orientedHoleRects READ orientedHoleRects NOTIFY orientedHoleRectsChanged)
     Q_PROPERTY(PathGenerator* transects  READ transects  CONSTANT)
     Q_PROPERTY(bool showPathCoverage READ showPathCoverage WRITE setShowPathCoverage NOTIFY showPathCoverageChanged)
+    Q_PROPERTY(bool decmpsKind READ decmpsKind WRITE setDecmpsKind)
 
 public:
 
@@ -47,6 +48,7 @@ public:
     bool showDecomposition() const;
     bool showOrientedRect() const;
     bool showPathCoverage() const;
+    bool decmpsKind() const;
     QVariantList test_2Darray() const {
         QVariantList result;
 
@@ -69,12 +71,13 @@ public:
     // Методы для вызова из QML
     Q_INVOKABLE void setTransectWidth(double w);
     Q_INVOKABLE void setShowPathCoverage(bool in);
+    Q_INVOKABLE void setDecmpsKind(bool in);
     Q_INVOKABLE void setOriginalPolygon(const QVariantList &polygon);
     Q_INVOKABLE void setSweepAngle(double angle);
     Q_INVOKABLE void setShowDecomposition(bool show);
     Q_INVOKABLE void setShowOrientedRect(bool show);
     Q_INVOKABLE void updateDecomposition();
-    Q_INVOKABLE void resetPolygon();
+    Q_INVOKABLE void resetPolygon(int idx);
     Q_INVOKABLE void resetToPolygonWithHoleState();
     Q_INVOKABLE void setTest_2Darray(const QVariantList &polygon)
     {
@@ -123,7 +126,7 @@ private:
         PerpendiclSweepD = 3    // [3 - PerpendiclSweepD] 3 и 0 точки
     }; // обозначает каждую сторону описывающего прямоугольника
     // Алгоритмы декомпозиции
-    std::vector<QPolygonF> trapezoidalDecomposition(const QPolygonF& polygon, double sweepAngle);
+    QList<QPolygonF> trapezoidalDecomposition(const QPolygonF& polygon, double sweepAngle);
     QPolygonF getOrientedBoundingRect(const QPolygonF& polygon, QMap<OrientedLine, QLineF>& currOrient, double angleDegrees);
     QList<QPolygonF> boustrophedonDecomposition_compact(const QPolygonF& polygon, const QList<QPolygonF>& holes,
                                                         QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
@@ -183,12 +186,13 @@ private:
 
     // Данные
     QPolygonF m_originalPolygon;
-    QVector<QPolygonF> m_decompositionCells;
+    QList<QPolygonF> m_decompositionCells;
     QList<QPolygonF> m_bpd_decompositionCells;
     QPolygonF m_orientedRect;
     double m_sweepAngle;
     bool m_showDecomposition;
     bool m_showOrientedRect;
+    bool _decmpsKind;
     QList<QPolygonF> m_holes;
     QList<QPolygonF> m_orientedHoleRects;
     QList<QMap<OrientedLine, QLineF>> m_mapOriendtedHoleRectLines; // переменная с информацией какая из ограничивающего holes фигуры паралельна галсу или нет
@@ -201,6 +205,7 @@ private:
     // Предопределенные полигоны
     void createDefaultPolygon();
     void createPolygonWithHoles();
+    void createPolygonWithHoles(int idx);
 };
 
 #endif

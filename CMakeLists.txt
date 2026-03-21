@@ -14,7 +14,6 @@ else()
 endif()
 
 set(PROG_INCLUDE    ${CMAKE_CURRENT_SOURCE_DIR}/src
-                    ${CMAKE_CURRENT_SOURCE_DIR}/libs/a-star
                     ${Qt5Widgets_INCLUDE_DIRS}
                     ${QtQml_INCLUDE_DIRS})
 
@@ -25,7 +24,6 @@ find_package(Qt5 COMPONENTS Core Quick QuickControls2 REQUIRED)
 find_package(Clipper2 CONFIG REQUIRED)
 
 add_subdirectory(src)
-add_subdirectory(libs/a-star)
 
 add_library(decomposerLib) # initialized below
 add_library(decomposerLib::decomposerLib ALIAS decomposerLib)
@@ -47,7 +45,6 @@ target_link_libraries(decomposerLib
         Clipper2::Clipper2
         PRIVATE
         src
-        a-star
 )
 
 include_directories(${PROG_INCLUDE})

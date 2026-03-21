@@ -97,32 +97,30 @@ Rectangle {
                 rdbtn1.checked = true
             }
         }
-        /*RadioButton {
-            contentItem: Loader {
-                sourceComponent: control.checked ? checkedComponent : uncheckedComponent
 
-                Component {
-                    id: checkedComponent
-                    Row {
-                        spacing: 5
-                        Image { source: "checked.svg" }
-                        Text {
-                            text: control.text
-                            color: "green"
-                            font.bold: true
-                        }
-                    }
-                }
+        // Кнопки для смены полигона
+        Text {
+            text: "Polygon Shapes:"
+            color: "white"
+            font.pixelSize: 14
+            font.bold: true
+        }
 
-                Component {
-                    id: uncheckedComponent
-                    Text {
-                        text: control.text
-                        color: "gray"
-                    }
+        Column {
+            spacing: 5
+            Layout.fillWidth: true
+
+            Repeater{
+                model: 3
+                delegate: Button {
+                    required property int index
+                    property int showIdx:index+1
+                    text: "Complex shape (" + showIdx + ")"
+                    width: parent.width
+                    onClicked: decomposer.resetPolygon(index)
                 }
             }
-        }*/
+        }
 
         // Разделитель
         Rectangle {
@@ -239,64 +237,6 @@ Rectangle {
             Layout.fillWidth: true
             height: 1
             color: "#7f8c8d"
-        }
-
-        // Легенда
-        Text {
-            text: "Legend:"
-            color: "white"
-            font.pixelSize: 14
-            font.bold: true
-        }
-
-        Row {
-            spacing: 10
-            Rectangle {
-                width: 15
-                height: 15
-                color: "red"
-                radius: 3
-            }
-            Text {
-                text: "Original Polygon"
-                color: "white"
-                font.pixelSize: 12
-                anchors.verticalCenter: parent.verticalCenter
-            }
-        }
-
-        Row {
-            spacing: 10
-            Rectangle {
-                width: 15
-                height: 15
-                color: "#33B5E5"
-                radius: 3
-            }
-            Text {
-                text: "Decomposition Cells"
-                color: "white"
-                font.pixelSize: 12
-                anchors.verticalCenter: parent.verticalCenter
-            }
-        }
-
-        Row {
-            spacing: 10
-            Rectangle {
-                width: 15
-                height: 15
-                color: "#99CC00"
-                border.color: "black"
-                border.width: 1
-                radius: 3
-            }
-            Text {
-                text: "Oriented Bounding Rect"
-                color: "white"
-                font.pixelSize: 12
-                anchors.verticalCenter: parent.verticalCenter
-            }
         }
 
         Item {

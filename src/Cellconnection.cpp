@@ -12,6 +12,7 @@ Cellconnection::Cellconnection() :
         , _pointTo2d()
         , _resPath()
         , _holes(nullptr)
+        , _survPoly(nullptr)
 {
 
 }
@@ -21,10 +22,12 @@ Cellconnection::~Cellconnection()
 
 }
 
-void Cellconnection::init(const QList<QPolygonF> *holes)
+void Cellconnection::init(const QList<QPolygonF> *holes, const QPolygonF* survPoly)
 {
-    if(_holes == nullptr)
+    if(_holes == nullptr || survPoly == nullptr) {
         _holes = holes;
+        _survPoly = survPoly;
+    }
 }
 
 QList<QPointF> Cellconnection::getPath() const
@@ -65,6 +68,15 @@ void Cellconnection::_buildPath2d()
         }
         polyRepHolesV.push_back(polyRep);
     }
+    QList<QLineF> survPolyV;
+    for (int i = 0; i < _survPoly->size(); ++i) {
+        auto p1 = _survPoly->at(i);
+        auto p2 = _survPoly->at((i + 1) % _survPoly->size());
+        QLineF survLine(p1, p2);
+        intersectionListFormimgRoutine(fastTrack, survLine, intersections, QLineF::BoundedIntersection);
+        survPolyV.append(survLine);
+    }
+    polyRepHolesV.push_back(survPolyV);
 
     // сортируем по дальности
     std::sort(intersections.begin(), intersections.end(),

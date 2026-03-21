@@ -6,7 +6,6 @@
 #define TRYCELLUARPATHCOMPOSE_PATH_GENERATOR_H
 
 #include "utils.h"
-#include "PathFinderCalculator.h"
 #include "Cellconnection.h"
 #include <QPolygonF>
 #include <QLineF>
@@ -97,7 +96,6 @@ private:
     // два указателя на переменные хранящие информацию по ячейкам cells
     const QList<QPolygonF>*     _bpd_decompositionCells = nullptr;
 
-    PathFinderCalculator *pfc;
     Cellconnection       *clcntn;
 };
 

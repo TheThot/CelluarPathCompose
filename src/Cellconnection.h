@@ -13,11 +13,8 @@ class Cellconnection
     QPointF _pointFrom2d;
     QPointF _pointTo2d;
     const QList<QPolygonF>* _holes;
+    const QPolygonF* _survPoly;
     QPolygonF _resPath;
-
-    bool _isPointInObstacle(const QPointF& point) const;
-
-    QPointF _findNearestFreePoint(const QPointF& point);
 
     void _buildPath2d();
 
@@ -25,7 +22,7 @@ public:
     Cellconnection();
     ~Cellconnection();
 
-    void init(const QList<QPolygonF>* holes);
+    void init(const QList<QPolygonF>* holes, const QPolygonF* survPoly);
     QList<QPointF> getPath() const;
     void perform(const QPointF &pointFrom, const QPointF &pointTo);
 };
