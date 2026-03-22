@@ -59,14 +59,9 @@ signals:
 
 private:
 
-    enum class cellNaming{
-        NonHolesPathSeg = 0,
-        HolesPathSeg = 1,
-    };
-
     QList<QList<QPointF>>   _improvePathRespectCell(const QList<QList<QPointF>>& resPointList, const QPolygonF& cell);
     QList<QLineF>           _pathSegmRelationToCell(const QPolygonF& inPoly);
-    QVariantList             _oneLoopTraj(const QList<QList<QPointF>>& in) const;
+    QVariantList            _oneLoopTraj(const QList<QList<QPointF>>& in) const;
     template<typename Type>
     void                    _orientLineOneDirection(const QList<Type>& lineList, QList<Type>& resultLines);
 

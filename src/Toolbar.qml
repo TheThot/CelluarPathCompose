@@ -182,7 +182,7 @@ Rectangle {
                 id: showOrientedRectCheck
                 checked: false
                 text: "Show Oriented Rect"
-                visible: false
+                visible: true
                 contentItem: Text {
                     text: showOrientedRectCheck.text
                     color: "white"

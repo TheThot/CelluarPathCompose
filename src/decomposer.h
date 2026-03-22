@@ -110,56 +110,18 @@ signals:
 
 private:
     void _init();
-    enum class OrientPointNames
-    {
-        LeftBottom = 0,     // [0] - лев ниж
-        RightBottom = 1,    // [1] - прав ниж
-        RightTop = 2,       // [2] - прав верх
-        LeftTop = 3         // [3] - лев верх
-    };
-    // против часовой стрелки ориентация правосторонняя сист коорд
-    enum class OrientedLine
-    {
-        ParallelSweepL = 2,     // [2 - ParallelSweepL] 2 и 3 точки
-        PerpendiclSweepU = 1,   // [1 - PerpendiclSweepU] 1 и 2 точки
-        ParallelSweepR = 0,     // [0 - ParallelSweepR] 0 и 1
-        PerpendiclSweepD = 3    // [3 - PerpendiclSweepD] 3 и 0 точки
-    }; // обозначает каждую сторону описывающего прямоугольника
     // Алгоритмы декомпозиции
     QList<QPolygonF> trapezoidalDecomposition(const QPolygonF& polygon, double sweepAngle);
-    QPolygonF getOrientedBoundingRect(const QPolygonF& polygon, QMap<OrientedLine, QLineF>& currOrient, double angleDegrees);
+    QPolygonF getOrientedBoundingRect(const QPolygonF& polygon, double angleDegrees);
     QList<QPolygonF> boustrophedonDecomposition_compact(const QPolygonF& polygon, const QList<QPolygonF>& holes,
-                                                        QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
                                                         double sweepAngle);
     QList<QPolygonF> boustrophedonDecomposition(const QPolygonF& polygon, const QList<QPolygonF>& holes,
-                                                const QList<QMap<OrientedLine, QLineF>>& mapOriendtedHoleRectLines,
                                                 double sweepAngle);
-    void upDownBorderFormingRoutineNewMannerReadyPoly(const QMap<OrientedLine, QLineF>& inMap,
-                                                      const QPolygonF& hole,
-                                                      QPolygonF& returnUp,
-                                                      QPolygonF& returnDown);
-    void lineHoleUpDownBorderFormingRoutineNewManner(const QMap<OrientedLine, QLineF>& inMap,
-                                                     const QPolygonF& hole,
-                                                    QPolygonF& returnUpPoly,
-                                                    QPolygonF& returnDownPoly,
-                                                     QList<QPointF>& returnUpL,
-                                                     QList<QPointF>& returnDownL);
-    void newParallFormingRoutine(const QMap<OrientedLine, QLineF>& inMap,
-                                 const QPolygonF& survPolyBound,
-                                 QLineF& returnL,
-                                 QLineF& returnR);
-    void newBorderFormingRoutine(const QMap<OrientedLine, QLineF>& inMap,
-                                 const QPolygonF& hole,
-                                 QLineF& returnUp,
-                                 QLineF& returnDown);
 
     // Утилиты
-    void iniAllAlliasBCD(int size, QList<QMap<OrientedLine, QLineF>>& copy,
-                        QList<QPolygonF>& readyPolyUp, QList<QPolygonF>& readyPolyDown,
-                        QList<QList<QPointF>>& holeBorderUp,
-                        QList<QList<QPointF>>& holeBorderDown);
     template <typename T>
     T rotationStruct(const T& v, double sweepAngle);
+    QPointF updateCenterBeforeRot(QPolygonF& poly);
     QPointF rotatePoint(const QPointF& point, double angle);
     QPointF inverseRotatePoint(const QPointF& point, double angle);
     double computePolygonArea(const QPolygonF& polygon) const;
@@ -195,7 +157,6 @@ private:
     bool _decmpsKind;
     QList<QPolygonF> m_holes;
     QList<QPolygonF> m_orientedHoleRects;
-    QList<QMap<OrientedLine, QLineF>> m_mapOriendtedHoleRectLines; // переменная с информацией какая из ограничивающего holes фигуры паралельна галсу или нет
 
     PolyBuilder    _pb;
     PathGenerator* _transects;
