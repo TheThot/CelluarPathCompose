@@ -205,7 +205,7 @@ QList<QPolygonF> PolyBuilder::subtractedListWrp(const QPolygonF &poly1, const QP
     return res;
 }
 
-QPolygonF PolyBuilder::snglIntersctnWrp(const QPolygonF &poly1, const QPolygonF &poly2){
+QPolygonF PolyBuilder::snglIntersctnWrp(const QPolygonF &poly1, const QPolygonF &poly2, bool doOffset){
     QPolygonF res = {};
     if (poly1.isEmpty() || poly2.isEmpty()) {
         return res;
@@ -223,6 +223,15 @@ QPolygonF PolyBuilder::snglIntersctnWrp(const QPolygonF &poly1, const QPolygonF 
         clip.push_back(PointD(point.x(), point.y()));
 
     temp.setGeometry(clip);
+
+    if(doOffset) {
+        auto resClipper = _offsetPolygon(getPrecise(), scale_factor+100);
+        auto tempRes = ScalePaths<double, int64_t>(resClipper, scale_factor, _error_code);
+        setGeometry(tempRes.front());
+        resClipper = _offsetPolygon(temp.getPrecise(), scale_factor+100);
+        tempRes = ScalePaths<double, int64_t>(resClipper, scale_factor, _error_code);
+        temp.setGeometry(tempRes.front());
+    }
 
     auto resClipper = _intersect(temp.getPrecise());
 

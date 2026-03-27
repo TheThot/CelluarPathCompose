@@ -233,14 +233,6 @@ void Decomposer::updateDecomposition() {
     // Выполняем трапецоидальную декомпозицию
     m_decompositionCells = trapezoidalDecomposition(m_originalPolygon, m_sweepAngle);
 
-    /*auto rot = m_orientedRect;
-    auto center = updateCenterBeforeRot(rot);
-    auto rotatedSurvPolyPolygon = rotationStruct<QPolygonF>(rot, m_sweepAngle);
-    for(auto& p : rotatedSurvPolyPolygon)
-        p += center;
-    m_orientedRect = rotatedSurvPolyPolygon;
-    std::cout << "Here is center x " << center.x() << " y " << center.y() << std::endl;*/ // центр всегда один несмещаем
-
     // Выполняем бустрофедон декомпозицию
     m_bpd_decompositionCells = boustrophedonDecomposition(m_originalPolygon, m_holes, m_sweepAngle);
 
@@ -425,6 +417,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
                                                                 double sweepAngle)
 {
     QList<QPolygonF> resCells{};
+    QList<QPolygonF> edgeOp{}; // нужен доп для внесения крайних зон (без этого пока никак)
 
     if (polygon.size() < 3) {
         return resCells;
@@ -464,6 +457,17 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         xSurvLeft   -= tempRotCenter.x() - currCenter.x();
         xSurvRight  += currCenter.x() - tempRotCenter.x();
 
+        // монолитный полигольник для hole по выходу из цикла вырежем hole
+        QPolygonF single;
+        single  << QPointF(xSurvRight, currOrientHole.boundingRect().bottom())
+                << QPointF(xSurvRight, currOrientHole.boundingRect().top())
+                << QPointF(xSurvLeft, currOrientHole.boundingRect().top())
+                << QPointF(xSurvLeft, currOrientHole.boundingRect().bottom());
+
+        rotationRoutine(single, currCenter, -sweepAngle);
+        resCells.append(single);
+
+        // заполняем допник
         QPolygonF up, down;
         up      << QPointF(xSurvRight, currOrientHole.boundingRect().bottom())
                 << QPointF(xSurvRight, currOrientHole.boundingRect().top())
@@ -476,23 +480,28 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
 
         rotationRoutine(up, currCenter, -sweepAngle);
         rotationRoutine(down, currCenter, -sweepAngle);
-        resCells.append(up);
-        resCells.append(down);
+        edgeOp.append(up);
+        edgeOp.append(down);
     }
 
-    // ------------------------ внесение крайних зон и в промежутках с использованием clipper -------------------------------
-    QList<QPolygonF> whole;
-    for(auto& curr: resCells){
-        curr.append(curr[0]);
+    // ------------------------ вырезаем hole -------------------------------
+    QList<QPolygonF> extra = {};
+    for(int i = 0; i < m_holes.count(); ++i)
+    {
+        auto substract = _pb.subtractedListWrp(resCells[i], m_holes[i]);
+        for(int k = 0; k < substract.count() && polygonsAreDifferent(substract[0], resCells[i]); ++k)
+            if(!substract[k].empty())
+                extra.append(substract[k]);
     }
-    whole = _pb.unitedListWrp(resCells);
+    resCells = std::move(extra);
+
+    // ------------------------ внесение крайних зон и в промежутках с использованием clipper EdgeOp -------------------------------
+    QList<QPolygonF> whole;
+    whole = _pb.unitedListWrp(edgeOp);
     auto listEdgesCells = _pb.subtractedListWrp(m_orientedRect, whole);
-//    std::cout << "Size of listEdgesCells is " << listEdgesCells.count() << std::endl;
     for(const auto& curr: listEdgesCells){
         resCells.append(curr);
     }
-
-//    std::cout << "Size of cell decmps is " << resCells.count() << std::endl;
 
     return resCells;
 }
@@ -513,68 +522,70 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
                 // у каждой holes 2 cells в resCells = boustrophedonDecomposition_compact были посл положены в начале массива
                 for(int u = 0; u < 2; ++u){
                     idxCellForHole1 = i * 2 + u;
-                    auto holecell = _pb.snglIntersctnWrp(resCells[idxCellForHole1], holes[j]);
                     // Проверяем все угловые точки отверстия как в cell от hole(i) входит hole(j)
-                    for (int w = 0; w < 2; ++w) {
-                        idxCellForHole2 = j * 2 + w;
-                        if(polygonArea(holecell) != 0) {
                             // Вырезаем отверстие из ячейки
-                            auto subtracted = _pb.subtractedListWrp(resCells[idxCellForHole1],
-                                                                    resCells[idxCellForHole2]);
+                            QList<QPolygonF> subtracted;
+                            bool rule = polygonArea(_pb.snglIntersctnWrp(resCells[j * 2], holes[i], true)) != 0;
+                            subtracted = _pb.subtractedListWrp(resCells[idxCellForHole1],
+                                                               rule ? resCells[j * 2 + 1] : resCells[j * 2]);
                             if (!subtracted.isEmpty()) {
                                 // Заменяем исходную ячейку результатом вычитания
-                                resCells[idxCellForHole1] = subtracted[0];
+                                resCells[idxCellForHole1] = subtracted.first();
 
                                 for (int k = 1; k < subtracted.count(); ++k)
                                     resCells.append(subtracted[k]);
                             }
-                        }
-                    }
                 }
-
-    // удалить накладывающиеся друг на друга зоны
-    for(int i = 0; i < holes.count(); ++i) {
-        for (int j = 0; j < holes.count(); ++j) {
-            if (i == j) continue;  // Пропускаем сравнение с собой
-
-            for (int u = 0; u < 2; ++u) {
-                for (int w = 0; w < 2; ++w) {
-                    idxCellForHole1 = i * 2 + u;
-                    idxCellForHole2 = j * 2 + w;
-
-                    // Получаем текущие значения
-                    QPolygonF cell1 = resCells[idxCellForHole1];
-                    QPolygonF cell2 = resCells[idxCellForHole2];
-
-                    // Если cell2 внутри cell1, вычитаем cell2 из cell1
-                    auto res = _pb.subtractedListWrp(cell1, cell2, false);
-                    if (!res.isEmpty()) {
-                        // Обновляем cell1 результатом вычитания
-                        resCells[idxCellForHole1] = res[0];
-                        for(const auto& currRes: res)
-                            if(polygonArea(currRes) > polygonArea(resCells[idxCellForHole1]))
-                                resCells[idxCellForHole1] = currRes;
-                    }
-                }
+    //удаляем лишние наложения на holes в рез прошлых операций и вписываем в границы survPoly
+    QList<QPolygonF> extra = {};
+    for(auto & currCell: resCells)
+    {
+        for (const auto& currHole:m_holes)
+        {
+            auto res = _pb.subtractedListWrp(currCell, currHole);
+            if(!res.isEmpty()) {
+                currCell = res.first();
+                for (int k = 1; k < res.count(); ++k)
+                    extra.append(res[k]);
             }
         }
     }
-
+    for(const auto& curr:extra)
+        if(!resCells.contains(curr))
+            resCells.append(curr);
     for(auto & currCell: resCells)
-    {
-        auto currCellSq = polygonArea(currCell);
-        for (const auto& currHole:m_holes)
-        {
-            auto res = _pb.subtractedListWrp(currCell, currHole, false);
-            for(const auto& currRes: res) // в отдельной реаилизации продуцировался один единственный todo выяснить почему так?
-                if(polygonArea(currRes) <= currCellSq + polygonArea(currHole) && polygonArea(currRes) >= currCellSq - polygonArea(currHole))
-                    currCell = currRes;
-            currCellSq = polygonArea(currCell);
-        }
         currCell = _pb.snglIntersctnWrp(currCell, m_originalPolygon);
+
+    // удалить накладывающиеся друг на друга зоны
+    for(int i = 0; i < resCells.count(); ++i)
+        for (int j = 0; j < resCells.count(); ++j) {
+                    // Получаем текущие значения
+                    QPolygonF cell1 = resCells[i];
+                    QPolygonF cell2 = resCells[j];
+
+                    // Если cell2 внутри cell1, вычитаем cell2 из cell1
+                    auto subtracted = _pb.subtractedListWrp(cell1, cell2);
+                    if (!subtracted.isEmpty()) {
+                        // Обновляем cell1 результатом вычитания
+                        resCells[i] = subtracted.first();
+                        for(int k = 1; k < subtracted.count(); ++k)
+                            resCells.append(subtracted);
+                    }
+        }
+
+    // hit me one more time:) иногда проскакивают дубли, убираем
+    QList<QPolygonF> resCells2{};
+    for(const auto& cell : resCells) {
+        auto it = std::find_if(resCells2.begin(), resCells2.end(),
+                               [&cell](const QPolygonF& existing) {
+                                   return !polygonsAreDifferentV2(cell, existing);
+                               });
+
+        if(it == resCells2.end())
+            resCells2.append(cell);
     }
 
-    return resCells;
+    return resCells2;
 }
 
 QList<QPolygonF> Decomposer::getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes,
