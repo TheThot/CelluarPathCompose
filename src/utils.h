@@ -563,5 +563,109 @@ namespace baseFunc {
         return false;
     }
 
+    static bool polygonsAreDifferentV2(const QPolygonF& p1, const QPolygonF& p2, double epsilon = 1e-2) {
+        // Если количество точек одинаковое, используем старую логику
+        if (p1.size() == p2.size()) {
+            // Создаем копии и сортируем точки
+            QList<QPointF> points1, points2;
+            for (const QPointF& point : p1) {
+                points1.append(point);
+            }
+            for (const QPointF& point : p2) {
+                points2.append(point);
+            }
+
+            // Сортируем по x, затем по y
+            auto comparePoint = [epsilon](const QPointF& a, const QPointF& b) {
+                if (qAbs(a.x() - b.x()) > epsilon) {
+                    return a.x() < b.x();
+                }
+                return a.y() < b.y();
+            };
+
+            std::sort(points1.begin(), points1.end(), comparePoint);
+            std::sort(points2.begin(), points2.end(), comparePoint);
+
+            // Сравниваем отсортированные точки
+            for (int i = 0; i < points1.size(); ++i) {
+                if (qAbs(points1[i].x() - points2[i].x()) > epsilon ||
+                    qAbs(points1[i].y() - points2[i].y()) > epsilon) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Если количество точек разное, проверяем, не является ли один полигон
+        // другим с добавленными точками на ребрах
+        const QPolygonF* larger = nullptr;
+        const QPolygonF* smaller = nullptr;
+
+        if (p1.size() > p2.size()) {
+            larger = &p1;
+            smaller = &p2;
+        } else {
+            larger = &p2;
+            smaller = &p1;
+        }
+
+        // Проверяем, что все точки меньшего полигона лежат на ребрах большего
+        // и что больший полигон содержит только точки, лежащие на ребрах меньшего
+        // (с учетом возможной аппроксимации)
+
+        // Функция проверки, лежит ли точка на отрезке
+        auto pointOnSegment = [epsilon](const QPointF& p, const QPointF& a, const QPointF& b) {
+            // Проверяем коллинеарность через площадь треугольника
+            double area = qAbs((b.x() - a.x()) * (p.y() - a.y()) - (b.y() - a.y()) * (p.x() - a.x()));
+            if (area > epsilon) return false;
+
+            // Проверяем, что точка находится между a и b
+            double minX = qMin(a.x(), b.x()) - epsilon;
+            double maxX = qMax(a.x(), b.x()) + epsilon;
+            double minY = qMin(a.y(), b.y()) - epsilon;
+            double maxY = qMax(a.y(), b.y()) + epsilon;
+
+            return (p.x() >= minX && p.x() <= maxX && p.y() >= minY && p.y() <= maxY);
+        };
+
+        // Для каждого ребра меньшего полигона проверяем, что все точки большего
+        // на этом ребре (или между ними) находятся в пределах допуска
+        // Сначала проверим, что все точки меньшего полигона лежат на ребрах большего
+        for (const QPointF& smallPoint : *smaller) {
+            bool found = false;
+            for (int i = 0; i < larger->size(); ++i) {
+                const QPointF& a = larger->at(i);
+                const QPointF& b = larger->at((i + 1) % larger->size());
+
+                if (pointOnSegment(smallPoint, a, b)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return true; // Точка меньшего полигона не лежит на ребрах большего
+            }
+        }
+
+        // Проверяем, что все точки большего полигона лежат на ребрах меньшего
+        for (const QPointF& largePoint : *larger) {
+            bool found = false;
+            for (int i = 0; i < smaller->size(); ++i) {
+                const QPointF& a = smaller->at(i);
+                const QPointF& b = smaller->at((i + 1) % smaller->size());
+
+                if (pointOnSegment(largePoint, a, b)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return true; // Точка большего полигона не лежит на ребрах меньшего
+            }
+        }
+
+        return false; // Полигоны одинаковы (один получен добавлением точек на ребра другого)
+    }
+
 }
 #endif //TRYCELLUARPATHCOMPOSE_UTILS_H

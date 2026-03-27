@@ -557,33 +557,35 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
         currCell = _pb.snglIntersctnWrp(currCell, m_originalPolygon);
 
     // удалить накладывающиеся друг на друга зоны
-    for(int i = 0; i < holes.count(); ++i) {
-        for (int j = 0; j < holes.count(); ++j) {
-            if (i == j) continue;  // Пропускаем сравнение с собой
-
-            for (int u = 0; u < 2; ++u) {
-                for (int w = 0; w < 2; ++w) {
-                    idxCellForHole1 = i * 2 + u;
-                    idxCellForHole2 = j * 2 + w;
-
+    for(int i = 0; i < resCells.count(); ++i)
+        for (int j = 0; j < resCells.count(); ++j) {
                     // Получаем текущие значения
-                    QPolygonF cell1 = resCells[idxCellForHole1];
-                    QPolygonF cell2 = resCells[idxCellForHole2];
+                    QPolygonF cell1 = resCells[i];
+                    QPolygonF cell2 = resCells[j];
 
                     // Если cell2 внутри cell1, вычитаем cell2 из cell1
                     auto subtracted = _pb.subtractedListWrp(cell1, cell2);
                     if (!subtracted.isEmpty()) {
                         // Обновляем cell1 результатом вычитания
-                        resCells[idxCellForHole1] = subtracted.first();
+                        resCells[i] = subtracted.first();
                         for(int k = 1; k < subtracted.count(); ++k)
                             resCells.append(subtracted);
                     }
-                }
-            }
         }
+
+    // hit me one more time:) иногда проскакивают дубли, убираем
+    QList<QPolygonF> resCells2{};
+    for(const auto& cell : resCells) {
+        auto it = std::find_if(resCells2.begin(), resCells2.end(),
+                               [&cell](const QPolygonF& existing) {
+                                   return !polygonsAreDifferentV2(cell, existing);
+                               });
+
+        if(it == resCells2.end())
+            resCells2.append(cell);
     }
 
-    return resCells;
+    return resCells2;
 }
 
 QList<QPolygonF> Decomposer::getOrientedBoundingHoleRects(const QPolygonF& polygon, const QList<QPolygonF>& holes,
