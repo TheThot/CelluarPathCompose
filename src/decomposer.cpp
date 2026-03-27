@@ -417,6 +417,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
                                                                 double sweepAngle)
 {
     QList<QPolygonF> resCells{};
+    QList<QPolygonF> edgeOp{}; // нужен доп для внесения крайних зон (без этого пока никак)
 
     if (polygon.size() < 3) {
         return resCells;
@@ -456,6 +457,17 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
         xSurvLeft   -= tempRotCenter.x() - currCenter.x();
         xSurvRight  += currCenter.x() - tempRotCenter.x();
 
+        // монолитный полигольник для hole по выходу из цикла вырежем hole
+        QPolygonF single;
+        single  << QPointF(xSurvRight, currOrientHole.boundingRect().bottom())
+                << QPointF(xSurvRight, currOrientHole.boundingRect().top())
+                << QPointF(xSurvLeft, currOrientHole.boundingRect().top())
+                << QPointF(xSurvLeft, currOrientHole.boundingRect().bottom());
+
+        rotationRoutine(single, currCenter, -sweepAngle);
+        resCells.append(single);
+
+        // заполняем допник
         QPolygonF up, down;
         up      << QPointF(xSurvRight, currOrientHole.boundingRect().bottom())
                 << QPointF(xSurvRight, currOrientHole.boundingRect().top())
@@ -468,23 +480,28 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition_compact(const QPolygonF&
 
         rotationRoutine(up, currCenter, -sweepAngle);
         rotationRoutine(down, currCenter, -sweepAngle);
-        resCells.append(up);
-        resCells.append(down);
+        edgeOp.append(up);
+        edgeOp.append(down);
     }
 
-    // ------------------------ внесение крайних зон и в промежутках с использованием clipper -------------------------------
-    QList<QPolygonF> whole;
-    for(auto& curr: resCells){
-        curr.append(curr[0]);
+    // ------------------------ вырезаем hole -------------------------------
+    QList<QPolygonF> extra = {};
+    for(int i = 0; i < m_holes.count(); ++i)
+    {
+        auto substract = _pb.subtractedListWrp(resCells[i], m_holes[i]);
+        for(int k = 0; k < substract.count() && polygonsAreDifferent(substract[0], resCells[i]); ++k)
+            if(!substract[k].empty())
+                extra.append(substract[k]);
     }
-    whole = _pb.unitedListWrp(resCells);
+    resCells = std::move(extra);
+
+    // ------------------------ внесение крайних зон и в промежутках с использованием clipper EdgeOp -------------------------------
+    QList<QPolygonF> whole;
+    whole = _pb.unitedListWrp(edgeOp);
     auto listEdgesCells = _pb.subtractedListWrp(m_orientedRect, whole);
-//    std::cout << "Size of listEdgesCells is " << listEdgesCells.count() << std::endl;
     for(const auto& curr: listEdgesCells){
         resCells.append(curr);
     }
-
-//    std::cout << "Size of cell decmps is " << resCells.count() << std::endl;
 
     return resCells;
 }
@@ -508,7 +525,7 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
                     // Проверяем все угловые точки отверстия как в cell от hole(i) входит hole(j)
                             // Вырезаем отверстие из ячейки
                             QList<QPolygonF> subtracted;
-                            bool rule = polygonArea(_pb.snglIntersctnWrp(resCells[j * 2], holes[i])) != 0;
+                            bool rule = polygonArea(_pb.snglIntersctnWrp(resCells[j * 2], holes[i], true)) != 0;
                             subtracted = _pb.subtractedListWrp(resCells[idxCellForHole1],
                                                                rule ? resCells[j * 2 + 1] : resCells[j * 2]);
                             if (!subtracted.isEmpty()) {
@@ -519,6 +536,26 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
                                     resCells.append(subtracted[k]);
                             }
                 }
+    //удаляем лишние наложения на holes в рез прошлых операций и вписываем в границы survPoly
+    QList<QPolygonF> extra = {};
+    for(auto & currCell: resCells)
+    {
+        for (const auto& currHole:m_holes)
+        {
+            auto res = _pb.subtractedListWrp(currCell, currHole);
+            if(!res.isEmpty()) {
+                currCell = res.first();
+                for (int k = 1; k < res.count(); ++k)
+                    extra.append(res[k]);
+            }
+        }
+    }
+    for(const auto& curr:extra)
+        if(!resCells.contains(curr))
+            resCells.append(curr);
+    for(auto & currCell: resCells)
+        currCell = _pb.snglIntersctnWrp(currCell, m_originalPolygon);
+
     // удалить накладывающиеся друг на друга зоны
     for(int i = 0; i < holes.count(); ++i) {
         for (int j = 0; j < holes.count(); ++j) {
@@ -546,22 +583,6 @@ QList<QPolygonF> Decomposer::boustrophedonDecomposition(const QPolygonF& polygon
         }
     }
 
-    QList<QPolygonF> extra = {};
-    for(auto & currCell: resCells)
-    {
-        for (const auto& currHole:m_holes)
-        {
-            auto res = _pb.subtractedListWrp(currCell, currHole);
-            currCell = res.first();
-            for(int k = 1; k < res.count(); ++k)
-                extra.append(res[k]);
-        }
-    }
-    for(const auto& curr:extra)
-        if(!resCells.contains(curr))
-            resCells.append(curr);
-    for(auto & currCell: resCells)
-        currCell = _pb.snglIntersctnWrp(currCell, m_originalPolygon);
     return resCells;
 }
 

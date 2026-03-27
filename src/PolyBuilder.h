@@ -52,7 +52,7 @@ public:
 
     QList<QPolygonF> subtractedListWrp(const QPolygonF &poly1, const QPolygonF &poly2, bool doOffset = true);
 
-    QPolygonF snglIntersctnWrp(const QPolygonF &poly1, const QPolygonF &poly2);
+    QPolygonF snglIntersctnWrp(const QPolygonF &poly1, const QPolygonF &poly2, bool doOffset = false);
 
     void performClipperOperations(Path64& inProc);
 

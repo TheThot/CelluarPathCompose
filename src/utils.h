@@ -527,5 +527,41 @@ namespace baseFunc {
         return result;
     }
 
+    static bool polygonsAreDifferent(const QPolygonF& p1, const QPolygonF& p2, double epsilon = 1e-2) {
+        if (p1.size() != p2.size()) {
+            return true;
+        }
+
+        // Создаем копии и сортируем точки
+        QList<QPointF> points1, points2;
+        for (const QPointF& point : p1) {
+            points1.append(point);
+        }
+        for (const QPointF& point : p2) {
+            points2.append(point);
+        }
+
+        // Сортируем по x, затем по y
+        auto comparePoint = [epsilon](const QPointF& a, const QPointF& b) {
+            if (qAbs(a.x() - b.x()) > epsilon) {
+                return a.x() < b.x();
+            }
+            return a.y() < b.y();
+        };
+
+        std::sort(points1.begin(), points1.end(), comparePoint);
+        std::sort(points2.begin(), points2.end(), comparePoint);
+
+        // Сравниваем отсортированные точки
+        for (int i = 0; i < points1.size(); ++i) {
+            if (qAbs(points1[i].x() - points2[i].x()) > epsilon ||
+                qAbs(points1[i].y() - points2[i].y()) > epsilon) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 }
 #endif //TRYCELLUARPATHCOMPOSE_UTILS_H
